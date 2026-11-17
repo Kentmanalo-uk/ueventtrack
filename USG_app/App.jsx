@@ -11,7 +11,7 @@ import EventDetailsModal from './src/components/EventDetailsModal';
 import BarcodeScanner from './src/components/BarcodeScanner';
 import { useTheme } from './src/context/ThemeContext';
 
-const API_URL = 'http://10.54.162.26:8000/api';
+const API_URL = 'http://10.133.155.26:8000/api';
 
 // Configure axios timeout
 axios.defaults.timeout = 10000; // 10 seconds timeout
@@ -1361,6 +1361,9 @@ function RegisterModal({ visible, onClose, onSuccess }) {
         password_confirmation: '',
       });
     } catch (error) {
+      console.log('Registration error:', error);
+      console.log('Error response:', error.response);
+      
       const message = error.response?.data?.message || 'Registration failed';
       const errors = error.response?.data?.errors;
       
@@ -1368,7 +1371,11 @@ function RegisterModal({ visible, onClose, onSuccess }) {
         const errorMessages = Object.values(errors).flat().join('\n');
         Alert.alert('Registration Failed', errorMessages);
       } else {
-        Alert.alert('Registration Failed', message);
+        // Show more detailed error message
+        const detailedMessage = error.response 
+          ? `${message}\n\nStatus: ${error.response.status}\nDetails: ${JSON.stringify(error.response.data)}`
+          : 'Network error. Please check your connection and ensure the backend server is running.';
+        Alert.alert('Registration Failed', detailedMessage);
       }
     } finally {
       setLoading(false);

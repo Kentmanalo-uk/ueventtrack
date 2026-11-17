@@ -1,14 +1,14 @@
-# USG App - Expo SDK 57
+# USG App - Expo SDK 58
 
 ## ✅ Current Configuration
 
-This app is correctly configured with **Expo SDK 57**:
+This app is correctly configured with **Expo SDK 58**:
 
-- **Expo SDK:** 57.0.0
-- **React Native:** 0.86.0 (Official version for SDK 57)
-- **React:** 19.2.0 (Required for SDK 57)
+- **Expo SDK:** 58.0.0
+- **React Native:** 0.88.0 (Official version for SDK 58)
+- **React:** 19.3.1 (Required for SDK 58)
 
-All versions are per [Expo SDK 57 official documentation](https://expo.dev/changelog/sdk-57).
+All versions are per [Expo SDK 58 official documentation](https://expo.dev/changelog/sdk-58).
 
 ## 🚀 Quick Start
 
@@ -30,7 +30,7 @@ This starts both:
 
 ## 📱 Testing on Phone
 
-1. Install **Expo Go** app (latest version with SDK 57 support)
+1. Install **Expo Go** app (latest version with SDK 58 support)
 2. Make sure phone and computer are on same WiFi
 3. Scan QR code from terminal
 4. App loads successfully!
@@ -60,7 +60,7 @@ php artisan serve --host=0.0.0.0 --port=8000
 USG_app/
 ├── App.jsx                 # Main app component
 ├── styles.js              # Global styles
-├── package.json           # Dependencies (SDK 57)
+├── package.json           # Dependencies (SDK 58)
 ├── app.json              # Expo configuration
 ├── src/
 │   ├── components/       # Reusable components
@@ -105,7 +105,7 @@ npx expo start --clear
 ```
 
 ### Version Mismatch
-Make sure Expo Go app on phone is updated to latest version with SDK 57 support.
+Make sure Expo Go app on phone is updated to latest version with SDK 58 support.
 
 ## ✅ Success Indicators
 
@@ -128,10 +128,13 @@ Working correctly when:
 
 ## 🎯 Version History
 
+- **v2.0.0** - Updated to Expo SDK 58 (November 2026)
+  - Upgraded to React Native 0.88.0
+  - Updated all Expo packages to SDK 58 versions
+  - Note: Requires Node.js v22+ for optimal compatibility
 - **v1.0.0** - Initial release with Expo SDK 57
-- Migrated from SDK 52 to SDK 57
-- Fixed TurboModule compatibility issues
-- Updated to React Native 0.86.0
+  - Migrated from SDK 52 to SDK 57
+  - Fixed TurboModule compatibility issues
 
 ## 📝 Notes
 
@@ -142,4 +145,4 @@ Working correctly when:
 
 ---
 
-**For detailed troubleshooting, see `CORRECT_SDK57_INSTALL.md`**
+**Note:** SDK 58 recommends Node.js v22+ but will work with Node.js v20 (current version). For best performance, consider upgrading Node.js.
