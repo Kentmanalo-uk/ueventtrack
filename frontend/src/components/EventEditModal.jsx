@@ -41,6 +41,9 @@ export default function EventEditModal({ eventId, open, onClose, onUpdated }) {
         ...form,
         venue_lat: form.venue_lat ? parseFloat(form.venue_lat) : null,
         venue_lng: form.venue_lng ? parseFloat(form.venue_lng) : null,
+        // For full day events, don't send check-in times
+        check_in_start: form.event_type === 'full_day' ? null : (form.check_in_start || null),
+        check_in_end: form.event_type === 'full_day' ? null : (form.check_in_end || null),
       };
       await updateEvent(eventId, data);
       toast.success('Event updated.');

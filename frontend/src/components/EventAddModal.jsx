@@ -19,6 +19,9 @@ export default function EventAddModal({ open, onClose, onCreated }) {
         ...form,
         venue_lat: form.venue_lat ? parseFloat(form.venue_lat) : null,
         venue_lng: form.venue_lng ? parseFloat(form.venue_lng) : null,
+        // For full day events, don't send check-in times
+        check_in_start: form.event_type === 'full_day' ? null : (form.check_in_start || null),
+        check_in_end: form.event_type === 'full_day' ? null : (form.check_in_end || null),
       };
       await createEvent(data);
       toast.success('Event created successfully.');

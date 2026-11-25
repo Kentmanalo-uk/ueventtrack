@@ -4,16 +4,18 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Laravel\Sanctum\HasApiTokens;
 
 class Student extends Model
 {
-    use HasFactory;
+    use HasFactory, HasApiTokens;
 
     protected $fillable = [
         'student_id',
         'first_name',
         'last_name',
         'email',
+        'password',
         'course',
         'year_level',
         'barcode',
@@ -23,6 +25,10 @@ class Student extends Model
         'status',
         'archived',
         'academic_year_id',
+    ];
+
+    protected $hidden = [
+        'password',
     ];
 
     protected function casts(): array

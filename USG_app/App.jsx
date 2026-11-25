@@ -516,10 +516,37 @@ export default function App() {
   const fetchDashboard = async () => {
     if (!token) return;
     try {
-      const response = await axios.get(`${API_URL}/student-dashboard`);
+      console.log('Fetching dashboard...');
+      const response = await axios.get(`${API_URL}/student-dashboard`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      console.log('Dashboard response:', response.data);
       setDashboardData(response.data);
     } catch (error) {
-      console.log('Error fetching dashboard:', error.message);
+      console.log('Error fetching dashboard:', error);
+      console.log('Dashboard error response:', error.response?.data);
+      
+      // Don't crash the app - show error to user instead
+      Alert.alert(
+        'Dashboard Error',
+        'Failed to load dashboard: ' + (error.response?.data?.message || error.message),
+        [
+          {
+            text: 'Logout',
+            onPress: () => {
+              setToken(null);
+              setUser(null);
+              setDashboardData(null);
+            }
+          },
+          {
+            text: 'Retry',
+            onPress: () => fetchDashboard()
+          }
+        ]
+      );
     } finally {
       setRefreshing(false);
     }
@@ -802,10 +829,15 @@ export default function App() {
 
   // If logged in, show dashboard with tabs
   if (user && dashboardData) {
+    // Safely access dashboard data with defaults
+    const student = dashboardData.student || {};
+    const totalEvents = dashboardData.totalEvents || 0;
+    const attendedEvents = dashboardData.attendedEvents || 0;
+    
     const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
     const hour = new Date().getHours();
     const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-    const attendanceRate = dashboardData.totalEvents > 0 ? Math.round((dashboardData.attendedEvents / dashboardData.totalEvents) * 100) : 0;
+    const attendanceRate = totalEvents > 0 ? Math.round((attendedEvents / totalEvents) * 100) : 0;
     const streak = dashboardData.streak || 0;
     const nextEvent = dashboardData.nextEvent || null;
 
@@ -827,11 +859,11 @@ export default function App() {
             <View style={styles.profileSection}>
               <View style={styles.profileInitials}>
                 <Text style={styles.profileInitialsText}>
-                  {dashboardData.student?.first_name?.charAt(0)}{dashboardData.student?.last_name?.charAt(0)}
+                  {student?.first_name?.charAt(0) || 'U'}{student?.last_name?.charAt(0) || 'S'}
                 </Text>
               </View>
               <View style={styles.headerTextContainer}>
-                <Text style={styles.dashboardGreeting}>{greeting}, {dashboardData.student?.first_name}!</Text>
+                <Text style={styles.dashboardGreeting}>{greeting}, {student?.first_name || 'Student'}!</Text>
                 <Text style={styles.dashboardDate}>{today}</Text>
               </View>
             </View>

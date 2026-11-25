@@ -131,16 +131,14 @@ Route::middleware('auth:sanctum')->group(function () {
         });
     });
 
-    // Student routes
-    Route::middleware('role:student')->group(function () {
-        Route::get('/student-dashboard', [AuthController::class, 'studentDashboard']);
-        Route::get('/student-attendance', [AuthController::class, 'studentAttendance']);
-        Route::get('/student-events', [AuthController::class, 'studentEvents']);
-        Route::get('/student-profile', [AuthController::class, 'studentProfile']);
-        Route::put('/student-password', [AuthController::class, 'updateStudentPassword']);
-        Route::post('/student-profile-image', [AuthController::class, 'uploadProfileImage']);
-        
-        // Student fines
-        Route::get('/student-fines', [FineController::class, 'studentFines']);
-    });
+    // Student routes (accessible with Student model tokens)
+    Route::get('/student-dashboard', [AuthController::class, 'studentDashboard']);
+    Route::get('/student-attendance', [AuthController::class, 'studentAttendance']);
+    Route::get('/student-events', [AuthController::class, 'studentEvents']);
+    Route::get('/student-profile', [AuthController::class, 'studentProfile']);
+    Route::put('/student-password', [AuthController::class, 'updateStudentPassword']);
+    Route::post('/student-profile-image', [AuthController::class, 'uploadProfileImage']);
+    
+    // Student fines
+    Route::get('/student-fines', [FineController::class, 'studentFines']);
 });

@@ -18,6 +18,15 @@
         {
           "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera to scan barcodes."
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true,
+            "networkSecurityConfig": "./android/app/src/main/res/xml/network_security_config.xml"
+          }
+        }
       ]
     ],
     "ios": {
@@ -38,7 +47,8 @@
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"
       ],
-      "usesCleartextTraffic": true
+      "usesCleartextTraffic": true,
+      "networkSecurityConfig": "./android/app/src/main/res/xml/network_security_config.xml"
     },
     "web": {
       "favicon": "./assets/favicon.png"

@@ -167,34 +167,34 @@ class AuthController extends Controller
             'password' => 'required|string',
         ]);
 
-        $user = User::where('email', $request->email)->first();
+        // Mobile app is for students only - authenticate against Student model
+        $student = Student::where('email', $request->email)->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (!$student || !Hash::check($request->password, $student->password)) {
             return response()->json(['message' => 'Invalid credentials.'], 401);
         }
 
-        // Check if user is archived
-        if ($user->archived) {
-            return response()->json(['message' => 'This account has been archived and cannot log in.'], 403);
+        // Check if student is not active
+        if ($student->status !== 'active') {
+            return response()->json(['message' => 'This student account is not active. Please contact the administrator.'], 403);
         }
 
-        // Load student record
-        $user->load('studentRecord');
+        // Create token for mobile app (students use Sanctum tokens)
+        $token = $student->createToken('mobile-app')->plainTextToken;
 
-        // Check if student record is archived (for student role)
-        if ($user->role === 'student' && $user->studentRecord && $user->studentRecord->archived) {
-            return response()->json(['message' => 'This student account has been archived and cannot log in.'], 403);
-        }
-
-        // Create token for mobile app
-        $token = $user->createToken('mobile-app')->plainTextToken;
-
-        AuditLog::record('login', "User logged in via mobile", 'User', $user->id, $user->id, $request->ip());
+        // Log student login (no user_id for students)
+        AuditLog::record('login', "Student logged in via mobile: {$student->first_name} {$student->last_name}", 'Student', $student->id, null, $request->ip());
 
         return response()->json([
             'token' => $token,
-            'user' => $user,
-            'role' => $user->role,
+            'user' => [
+                'id' => $student->id,
+                'name' => $student->first_name . ' ' . $student->last_name,
+                'email' => $student->email,
+                'role' => 'student',
+            ],
+            'student' => $student,
+            'role' => 'student',
         ]);
     }
 
@@ -246,7 +246,7 @@ class AuthController extends Controller
             'student_id' => 'required|string|max:255|unique:students,student_id',
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
-            'email' => 'required|email|max:255|unique:users,email',
+            'email' => 'required|email|max:255|unique:students,email',
             'course' => 'required|string|max:255',
             'year_level' => 'required|integer|min:1|max:6',
             'password' => 'required|string|min:6|confirmed',
@@ -259,14 +259,7 @@ class AuthController extends Controller
             'email' => $request->email,
             'course' => $request->course,
             'year_level' => $request->year_level,
-        ]);
-
-        $user = User::create([
-            'name' => $request->first_name . ' ' . $request->last_name,
-            'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role' => 'student',
-            'student_record_id' => $student->id,
         ]);
 
         // Clear students cache so desktop admin sees new student immediately
@@ -279,7 +272,15 @@ class AuthController extends Controller
             'email' => $student->email
         ]);
 
-        return response()->json(['user' => $user, 'message' => 'Student account created.'], 201);
+        return response()->json([
+            'student' => [
+                'id' => $student->id,
+                'student_id' => $student->student_id,
+                'name' => $student->first_name . ' ' . $student->last_name,
+                'email' => $student->email,
+            ],
+            'message' => 'Student account created successfully. You can now sign in.'
+        ], 201);
     }
 
     public function dashboard(): JsonResponse
@@ -344,11 +345,11 @@ class AuthController extends Controller
         // Update event statuses before fetching
         $this->updateEventStatuses();
 
-        $user = $request->user()->load('studentRecord');
-        $student = $user->studentRecord;
+        // Get the authenticated student directly (mobile login uses Student model tokens)
+        $student = $request->user();
 
         if (!$student) {
-            return response()->json(['message' => 'No student record linked.'], 404);
+            return response()->json(['message' => 'No student record found.'], 404);
         }
 
         $attendances = Attendance::where('student_id', $student->id)->with('event')->get();
