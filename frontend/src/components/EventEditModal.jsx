@@ -20,6 +20,9 @@ export default function EventEditModal({ eventId, open, onClose, onUpdated }) {
           event_date: e.event_date,
           start_time: e.start_time.substring(0, 5), // Convert HH:MM:SS to HH:MM
           end_time: e.end_time.substring(0, 5), // Convert HH:MM:SS to HH:MM
+          event_type: e.event_type || 'full_day',
+          check_in_start: e.check_in_start ? e.check_in_start.substring(0, 5) : '',
+          check_in_end: e.check_in_end ? e.check_in_end.substring(0, 5) : '',
           venue: e.venue,
           venue_lat: e.venue_lat || '', 
           venue_lng: e.venue_lng || '',
@@ -93,6 +96,14 @@ export default function EventEditModal({ eventId, open, onClose, onUpdated }) {
               </select>
             </div>
             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Event Type</label>
+              <select required value={form.event_type} onChange={e => set('event_type', e.target.value)} className={inputCls}>
+                <option value="full_day">Full Day</option>
+                <option value="morning_only">Morning Only</option>
+                <option value="afternoon_only">Afternoon Only</option>
+              </select>
+            </div>
+            <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Time</label>
               <input type="time" required value={form.start_time} onChange={e => set('start_time', e.target.value)} className={inputCls} />
             </div>
@@ -100,6 +111,23 @@ export default function EventEditModal({ eventId, open, onClose, onUpdated }) {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Time</label>
               <input type="time" required value={form.end_time} onChange={e => set('end_time', e.target.value)} className={inputCls} />
             </div>
+            
+            {/* Check-in Window (Optional - for half-day events) */}
+            {form.event_type !== 'full_day' && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Check-in Start Time</label>
+                  <input type="time" value={form.check_in_start} onChange={e => set('check_in_start', e.target.value)} className={inputCls} placeholder="When check-in opens" />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Students can only check in within this window</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Check-in End Time</label>
+                  <input type="time" value={form.check_in_end} onChange={e => set('check_in_end', e.target.value)} className={inputCls} placeholder="When check-in closes" />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Check-ins after this time will be rejected</p>
+                </div>
+              </>
+            )}
+            
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
               <select value={form.status} onChange={e => set('status', e.target.value)} className={inputCls}>

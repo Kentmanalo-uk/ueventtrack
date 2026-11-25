@@ -16,7 +16,11 @@ export default function EventEditPage() {
       const e = res.data.event;
       setForm({
         event_name: e.event_name, description: e.description || '', event_date: e.event_date,
-        start_time: e.start_time, end_time: e.end_time, venue: e.venue,
+        start_time: e.start_time, end_time: e.end_time, 
+        event_type: e.event_type || 'full_day',
+        check_in_start: e.check_in_start || '',
+        check_in_end: e.check_in_end || '',
+        venue: e.venue,
         venue_lat: e.venue_lat || '', venue_lng: e.venue_lng || '',
         venue_radius: e.venue_radius, status: e.status,
       });
@@ -71,6 +75,15 @@ export default function EventEditPage() {
               className="w-full px-4 py-2.5 border border-green-400 rounded-xl bg-gray-50 text-gray-900 text-sm focus:ring-2 focus:ring-green-400 focus:border-transparent placeholder:text-gray-400" />
           </div>
           <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Event Type</label>
+            <select required value={form.event_type} onChange={e => set('event_type', e.target.value)}
+              className="w-full px-4 py-2.5 border border-green-400 rounded-xl bg-gray-50 text-gray-900 text-sm focus:ring-2 focus:ring-green-400 focus:border-transparent placeholder:text-gray-400">
+              <option value="full_day">Full Day</option>
+              <option value="morning_only">Morning Only</option>
+              <option value="afternoon_only">Afternoon Only</option>
+            </select>
+          </div>
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Venue</label>
             <select required value={form.venue} onChange={e => set('venue', e.target.value)}
               className="w-full px-4 py-2.5 border border-green-400 rounded-xl bg-gray-50 text-gray-900 text-sm focus:ring-2 focus:ring-green-400 focus:border-transparent placeholder:text-gray-400">
@@ -95,6 +108,27 @@ export default function EventEditPage() {
             <input type="time" required value={form.end_time} onChange={e => set('end_time', e.target.value)}
               className="w-full px-4 py-2.5 border border-green-400 rounded-xl bg-gray-50 text-gray-900 text-sm focus:ring-2 focus:ring-green-400 focus:border-transparent placeholder:text-gray-400" />
           </div>
+          
+          {/* Check-in Window (Optional - for half-day events) */}
+          {form.event_type !== 'full_day' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Check-in Start Time</label>
+                <input type="time" value={form.check_in_start} onChange={e => set('check_in_start', e.target.value)}
+                  className="w-full px-4 py-2.5 border border-green-400 rounded-xl bg-gray-50 text-gray-900 text-sm focus:ring-2 focus:ring-green-400 focus:border-transparent placeholder:text-gray-400" 
+                  placeholder="When check-in opens" />
+                <p className="text-xs text-gray-500 mt-1">Students can only check in within this window</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Check-in End Time</label>
+                <input type="time" value={form.check_in_end} onChange={e => set('check_in_end', e.target.value)}
+                  className="w-full px-4 py-2.5 border border-green-400 rounded-xl bg-gray-50 text-gray-900 text-sm focus:ring-2 focus:ring-green-400 focus:border-transparent placeholder:text-gray-400" 
+                  placeholder="When check-in closes" />
+                <p className="text-xs text-gray-500 mt-1">Check-ins after this time will be rejected</p>
+              </div>
+            </>
+          )}
+          
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
             <select value={form.status} onChange={e => set('status', e.target.value)}

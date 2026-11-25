@@ -86,9 +86,45 @@ class AttendanceController extends Controller
             ], 422);
         }
 
+        // Validate check-in window for half-day events
+        $now = Carbon::now();
+        
+        if ($event->check_in_start && $event->check_in_end) {
+            $eventDate = Carbon::parse($event->event_date);
+            $checkInStart = Carbon::parse($eventDate->format('Y-m-d') . ' ' . $event->check_in_start);
+            $checkInEnd = Carbon::parse($eventDate->format('Y-m-d') . ' ' . $event->check_in_end);
+            
+            // Reject if outside allowed window
+            if ($now->lt($checkInStart) || $now->gt($checkInEnd)) {
+                $eventTypeLabel = str_replace('_', ' ', ucfirst($event->event_type));
+                
+                \Log::warning('Check-in failed: Outside allowed time window', [
+                    'student_id' => $student->student_id,
+                    'student_name' => $student->first_name . ' ' . $student->last_name,
+                    'event_id' => $request->event_id,
+                    'event_name' => $event->event_name,
+                    'event_type' => $event->event_type,
+                    'check_in_window' => $checkInStart->format('h:i A') . ' - ' . $checkInEnd->format('h:i A'),
+                    'attempted_time' => $now->format('h:i A'),
+                ]);
+                
+                return response()->json([
+                    'message' => "Check-in not allowed at this time. This is a {$eventTypeLabel} event.",
+                    'error' => 'OUTSIDE_CHECK_IN_WINDOW',
+                    'details' => [
+                        'event_type' => $event->event_type,
+                        'event_type_label' => $eventTypeLabel,
+                        'allowed_window_start' => $checkInStart->format('h:i A'),
+                        'allowed_window_end' => $checkInEnd->format('h:i A'),
+                        'current_time' => $now->format('h:i A'),
+                    ]
+                ], 422);
+            }
+        }
+
         // Determine late status
         $eventStart = Carbon::parse($event->event_date->format('Y-m-d') . ' ' . $event->start_time);
-        $status = Carbon::now()->gt($eventStart) ? 'late' : 'present';
+        $status = $now->gt($eventStart) ? 'late' : 'present';
 
         // Location verification
         $locationVerified = false;

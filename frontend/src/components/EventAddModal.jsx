@@ -6,6 +6,7 @@ import Modal from './Modal';
 export default function EventAddModal({ open, onClose, onCreated }) {
   const [form, setForm] = useState({
     event_name: '', description: '', event_date: '', start_time: '', end_time: '',
+    event_type: 'full_day', check_in_start: '', check_in_end: '',
     venue: '', venue_lat: '', venue_lng: '', venue_radius: 200,
   });
   const [loading, setLoading] = useState(false);
@@ -23,7 +24,7 @@ export default function EventAddModal({ open, onClose, onCreated }) {
       toast.success('Event created successfully.');
       setTimeout(() => {
         onClose();
-        setForm({ event_name: '', description: '', event_date: '', start_time: '', end_time: '', venue: '', venue_lat: '', venue_lng: '', venue_radius: 200 });
+        setForm({ event_name: '', description: '', event_date: '', start_time: '', end_time: '', event_type: 'full_day', check_in_start: '', check_in_end: '', venue: '', venue_lat: '', venue_lng: '', venue_radius: 200 });
         onCreated?.();
       }, 600);
     } catch (err) {
@@ -77,6 +78,15 @@ export default function EventAddModal({ open, onClose, onCreated }) {
             </select>
           </div>
           <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Event Type</label>
+            <select required value={form.event_type} onChange={e => set('event_type', e.target.value)}
+              className="w-full px-4 py-2.5 border border-green-400 dark:border-green-600 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-green-400 focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500">
+              <option value="full_day">Full Day</option>
+              <option value="morning_only">Morning Only</option>
+              <option value="afternoon_only">Afternoon Only</option>
+            </select>
+          </div>
+          <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Time</label>
             <input type="time" required value={form.start_time} onChange={e => set('start_time', e.target.value)}
               className="w-full px-4 py-2.5 border border-green-400 dark:border-green-600 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-green-400 focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500" />
@@ -86,6 +96,27 @@ export default function EventAddModal({ open, onClose, onCreated }) {
             <input type="time" required value={form.end_time} onChange={e => set('end_time', e.target.value)}
               className="w-full px-4 py-2.5 border border-green-400 dark:border-green-600 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-green-400 focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500" />
           </div>
+          
+          {/* Check-in Window (Optional - for half-day events) */}
+          {form.event_type !== 'full_day' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Check-in Start Time</label>
+                <input type="time" value={form.check_in_start} onChange={e => set('check_in_start', e.target.value)}
+                  className="w-full px-4 py-2.5 border border-green-400 dark:border-green-600 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-green-400 focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500" 
+                  placeholder="When check-in opens" />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Students can only check in within this window</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Check-in End Time</label>
+                <input type="time" value={form.check_in_end} onChange={e => set('check_in_end', e.target.value)}
+                  className="w-full px-4 py-2.5 border border-green-400 dark:border-green-600 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-green-400 focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500" 
+                  placeholder="When check-in closes" />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Check-ins after this time will be rejected</p>
+              </div>
+            </>
+          )}
+          
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Venue Latitude (Optional)</label>
             <input type="text" value={form.venue_lat} onChange={e => set('venue_lat', e.target.value)}

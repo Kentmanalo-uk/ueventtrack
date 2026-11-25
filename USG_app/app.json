@@ -1,13 +1,14 @@
 {
   "expo": {
-    "name": "USG_app",
-    "slug": "USG_app",
+    "name": "UEvent",
+    "slug": "uevent",
+    "owner": "emnl1215s-team",
     "version": "2.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/usg-logo.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/usg-logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -23,24 +24,28 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSCameraUsageDescription": "This app needs camera access to scan barcodes for event attendance."
-      }
+      },
+      "bundleIdentifier": "com.emnl2004.USG_app"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/usg-logo.png",
         "backgroundColor": "#ffffff"
       },
       "package": "com.emnl2004.USG_app",
       "permissions": [
-        "CAMERA"
-      ]
+        "CAMERA",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "usesCleartextTraffic": true
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "extra": {
       "eas": {
-        "projectId": "1a03f063-92be-4677-adfc-d6ac0a76f395"
+        "projectId": "8be05b3b-b770-4b84-b109-e24ec5ddb8dd"
       }
     }
   }

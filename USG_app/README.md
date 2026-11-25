@@ -39,7 +39,7 @@ This starts both:
 
 ### Current API URL:
 ```javascript
-const API_URL = 'http://172.31.178.26:8000/api';
+const API_URL = 'http://192.168.1.96:8000/api';
 ```
 
 ### To Update API URL:
