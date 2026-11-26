@@ -1,7 +1,6 @@
 ﻿import { useState, useEffect } from 'react';
 import { Calendar, LogIn, ArrowRight, Check, Users, Smartphone, QrCode, Eye, BarChart2, ChevronRight, Sparkles } from 'lucide-react';
 import LoginModal from '../components/LoginModal';
-import StudentRegisterModal from '../components/StudentRegisterModal';
 import { getPublicAnnouncements } from '../api/announcementApi';
 
 const FALLBACK_ANNOUNCEMENTS = [
@@ -12,7 +11,6 @@ const FALLBACK_ANNOUNCEMENTS = [
 
 export default function HomePage() {
   const [loginOpen, setLoginOpen] = useState(false);
-  const [registerOpen, setRegisterOpen] = useState(false);
   const [announcements, setAnnouncements] = useState(FALLBACK_ANNOUNCEMENTS);
   const [annIdx, setAnnIdx] = useState(0);
 
@@ -29,9 +27,6 @@ export default function HomePage() {
     }, 4000);
     return () => clearInterval(interval);
   }, [announcements]);
-
-  const openLogin = () => { setRegisterOpen(false); setLoginOpen(true); };
-  const openRegister = () => { setLoginOpen(false); setRegisterOpen(true); };
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950">
@@ -61,17 +56,11 @@ export default function HomePage() {
             </div>
             <div className="flex items-center gap-3">
               <button 
-                onClick={openLogin} 
-                className="hidden sm:block px-5 py-2 text-sm font-semibold text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+                onClick={() => setLoginOpen(true)} 
+                className="group px-6 py-2.5 bg-gradient-to-r from-gray-900 to-gray-800 dark:from-white dark:to-gray-100 text-white dark:text-gray-900 text-sm font-bold rounded-full hover:from-gray-800 hover:to-gray-700 dark:hover:from-gray-100 dark:hover:to-white transition-all shadow-lg hover:shadow-xl hover:scale-105 flex items-center gap-2"
               >
+                <LogIn className="w-4 h-4" />
                 Sign In
-              </button>
-              <button 
-                onClick={openRegister} 
-                className="group px-6 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-bold rounded-full hover:bg-gray-800 dark:hover:bg-gray-100 transition-all shadow-lg shadow-gray-900/20 dark:shadow-white/20 hover:shadow-gray-900/40 dark:hover:shadow-white/40 hover:scale-105 flex items-center gap-2"
-              >
-                Get Started
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
             </div>
           </div>
@@ -114,19 +103,17 @@ export default function HomePage() {
               {/* CTA Buttons */}
               <div className="flex flex-col sm:flex-row items-start gap-4 pt-2">
                 <button 
-                  onClick={openLogin}
+                  onClick={() => setLoginOpen(true)}
                   className="group px-8 py-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-base font-bold rounded-2xl hover:bg-gray-800 dark:hover:bg-gray-100 transition-all shadow-2xl shadow-gray-900/20 dark:shadow-white/20 hover:shadow-gray-900/40 dark:hover:shadow-white/40 hover:scale-105 flex items-center gap-3"
                 >
-                  <LogIn className="w-5 h-5" />
-                  Sign In Now
+                  Sign In
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </button>
-                <button 
-                  onClick={openRegister}
-                  className="px-8 py-4 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-base font-bold rounded-2xl border-2 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-750 transition-all"
-                >
-                  Register as Student
-                </button>
+                <div className="px-8 py-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 border border-green-200 dark:border-green-800 rounded-2xl">
+                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                    <span className="text-green-600 dark:text-green-400">Students:</span> Download the mobile app to register
+                  </p>
+                </div>
               </div>
 
               {/* Trust Indicators */}
@@ -303,18 +290,11 @@ export default function HomePage() {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <button
-              onClick={openLogin}
+              onClick={() => setLoginOpen(true)}
               className="group w-full sm:w-auto px-8 py-4 bg-white text-gray-900 text-lg font-bold rounded-2xl hover:bg-gray-100 transition-all shadow-2xl hover:scale-105 flex items-center justify-center gap-3"
             >
-              <LogIn className="w-5 h-5" />
-              Get Started Today
+              Sign In
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </button>
-            <button
-              onClick={openRegister}
-              className="w-full sm:w-auto px-8 py-4 bg-white/10 backdrop-blur-sm text-white text-lg font-bold rounded-2xl border-2 border-white/20 hover:bg-white/20 transition-all"
-            >
-              Register as Student
             </button>
           </div>
         </div>
@@ -342,12 +322,6 @@ export default function HomePage() {
       <LoginModal 
         open={loginOpen} 
         onClose={() => setLoginOpen(false)}
-        onSwitchToRegister={openRegister}
-      />
-      <StudentRegisterModal 
-        open={registerOpen} 
-        onClose={() => setRegisterOpen(false)}
-        onSwitchToLogin={openLogin}
       />
     </div>
   );

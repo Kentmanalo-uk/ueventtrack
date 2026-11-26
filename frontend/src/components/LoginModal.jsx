@@ -2,11 +2,10 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
-import { Mail, Lock, Eye, EyeOff, LogIn, ArrowRight } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, LogIn } from 'lucide-react';
 import Modal from './Modal';
-import GoogleSignInButton from './GoogleSignInButton';
 
-export default function LoginModal({ open, onClose, onSwitchToRegister }) {
+export default function LoginModal({ open, onClose }) {
   const [form, setForm] = useState({ email: '', password: '', remember: false });
   const [loading, setLoading] = useState(false);
   const [showPw, setShowPw] = useState(false);
@@ -100,26 +99,12 @@ export default function LoginModal({ open, onClose, onSwitchToRegister }) {
           </button>
         </form>
 
-        {/* Divider */}
-        <div className="relative my-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-200 dark:border-gray-700"></div>
-          </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="px-3 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 font-medium">Or continue with</span>
-          </div>
-        </div>
-
-        {/* Google Sign In */}
-        <GoogleSignInButton className="w-full" />
-
-        <div className="mt-5 pt-5 border-t-2 border-green-300 dark:border-gray-800">
+        <div className="mt-5 pt-5 border-t-2 border-gray-200 dark:border-gray-700">
           <p className="text-center text-sm text-gray-600 dark:text-gray-400">
-            Don't have an account?{' '}
-            <button onClick={onSwitchToRegister} className="text-green-600 dark:text-green-400 font-bold hover:text-green-700 dark:hover:text-green-500 transition inline-flex items-center gap-1">
-              Create Account
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+            Admin and USG Officers only.
+          </p>
+          <p className="text-center text-xs text-gray-500 dark:text-gray-500 mt-1">
+            Students: Use the mobile app to register and check in.
           </p>
         </div>
       </div>
