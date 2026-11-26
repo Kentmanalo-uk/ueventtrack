@@ -33,13 +33,8 @@ export default defineConfig({
     },
     // Increase chunk size warning limit
     chunkSizeWarningLimit: 1000,
-    // Enable minification
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true, // Remove console.logs in production
-      },
-    },
+    // Use Vite's built-in minifier (terser is not installed)
+    minify: true,
   },
   server: {
     port: 3000,
