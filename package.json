@@ -2,13 +2,14 @@
   "name": "ueventtrack",
   "private": true,
   "description": "U-EventTrack: Laravel API backend and React frontend for Hostinger deployment",
+  "main": "index.js",
   "engines": {
     "node": ">=18.0.0",
     "php": ">=8.2.0"
   },
   "scripts": {
-    "build": "npm ci --prefix frontend --include=dev && npm run build --prefix frontend && cd backend && composer install --optimize-autoloader --no-dev --no-scripts && php artisan package:discover --ansi && php artisan config:cache && php artisan route:cache && php artisan view:cache && cd .. && node -e \"require('fs').rmSync('build',{recursive:true,force:true});require('fs').cpSync('frontend/dist','build',{recursive:true})\"",
-    "start": "node server.js",
+    "build": "npm ci --prefix frontend --include=dev && npm run build --prefix frontend && cd backend && composer install --optimize-autoloader --no-dev --no-scripts && php artisan package:discover --ansi && php artisan config:cache && php artisan route:cache && php artisan view:cache",
+    "start": "node index.js",
     "dev": "concurrently \"npm run dev --prefix frontend\" \"cd backend && php artisan serve\"",
     "migrate": "cd backend && php artisan migrate --force",
     "seed": "cd backend && php artisan db:seed --force"
