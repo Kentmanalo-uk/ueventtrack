@@ -205,6 +205,14 @@ app.get('/debug/probe', (req, res) => {
   });
 });
 
+
+app.get('/debug/env', (req, res) => {
+  const { exec } = require('child_process');
+  exec('which php php-cgi php-fpm lsphp 2>&1; echo ---; ls -l "$(which php)" 2>&1; echo ---; php -v 2>&1 | head -2; echo ---; php-cgi -v 2>&1 | head -2; echo ---; php -r "echo php_sapi_name(), PHP_EOL, ini_get(\'disable_functions\'), PHP_EOL;" 2>&1; echo ---; curl -s -m 3 -o /dev/null -w "shell-curl:%{http_code}" http://127.0.0.1:' + PHP_PORT + '/ 2>&1', { timeout: 15000 }, (e, so, se) => {
+    res.type('text/plain').send((so || '') + (se || '') + (e ? '\nexec error: ' + e.message : ''));
+  });
+});
+
 // Proxy /sanctum to Laravel (needed for CSRF cookies)
 app.use('/sanctum', proxy(phpHost, {
   proxyReqPathResolver: (req) => '/sanctum' + req.url,
