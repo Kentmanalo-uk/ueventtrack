@@ -1,27 +1,12 @@
 const express = require('express');
 const path = require('path');
-const { spawn } = require('child_process');
 const fs = require('fs');
-const proxy = require('express-http-proxy');
+const { spawn } = require('child_process');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const net = require('net');
-let PHP_PORT = 0; // chosen at runtime: a free port assigned by the OS
-const phpHost = () => `127.0.0.1:${PHP_PORT}`;
-
-function getFreePort() {
-  return new Promise((resolve, reject) => {
-    const srv = net.createServer();
-    srv.unref();
-    srv.on('error', reject);
-    srv.listen(0, '127.0.0.1', () => {
-      const { port } = srv.address();
-      srv.close(() => resolve(port));
-    });
-  });
-}
 const BACKEND_DIR = path.join(__dirname, 'backend');
+const PUBLIC_DIR = path.join(BACKEND_DIR, 'public');
 
 // ---------------------------------------------------------------------------
 // 1. Generate Laravel .env from Node.js environment variables
@@ -29,7 +14,6 @@ const BACKEND_DIR = path.join(__dirname, 'backend');
 function generateLaravelEnv() {
   const envPath = path.join(BACKEND_DIR, '.env');
 
-  // If essential DB vars are set, generate .env from environment
   if (process.env.DB_DATABASE) {
     const lines = [
       `APP_NAME="${process.env.APP_NAME || 'U-EventTrack'}"`,
@@ -44,7 +28,7 @@ function generateLaravelEnv() {
       `DB_PORT=${process.env.DB_PORT || '3306'}`,
       `DB_DATABASE=${process.env.DB_DATABASE}`,
       `DB_USERNAME=${process.env.DB_USERNAME || ''}`,
-      `DB_PASSWORD=${process.env.DB_PASSWORD || ''}`,
+      `DB_PASSWORD="${(process.env.DB_PASSWORD || '').replace(/(["\\$])/g, '\\$1')}"`,
       ``,
       `SESSION_DRIVER=${process.env.SESSION_DRIVER || 'database'}`,
       `SESSION_LIFETIME=120`,
@@ -84,83 +68,129 @@ function generateLaravelEnv() {
 }
 
 // ---------------------------------------------------------------------------
-// 2. Start PHP built-in server for Laravel
+// 2. PHP bridge: run Laravel through php-cgi, one process per request.
+//    Hostinger disables proc_open (no `artisan serve`) and refuses loopback
+//    connections to child servers (no `php -S` proxying), so we speak CGI
+//    over stdin/stdout instead. No sockets are involved.
 // ---------------------------------------------------------------------------
-let phpProcess = null;
-let phpReady = false;
-const phpLogs = []; // ring buffer of last 50 log lines
+const phpLogs = []; // ring buffer of recent PHP-side problems
 function pushLog(msg) {
-  phpLogs.push({ t: new Date().toISOString(), msg });
+  phpLogs.push({ t: new Date().toISOString(), msg: String(msg).slice(0, 2000) });
   if (phpLogs.length > 50) phpLogs.shift();
 }
 
-async function startPhp() {
-  try {
-    PHP_PORT = await getFreePort();
-  } catch (e) {
-    pushLog('Could not find a free port: ' + e.message);
-    return setTimeout(startPhp, 5000);
-  }
-  console.log(`[php] Starting Laravel on ${phpHost()}...`);
-  pushLog('Starting php -S on port ' + PHP_PORT);
+let lastPhpOk = null;
 
-  // Quick boot test — check that PHP and Laravel load
-  try {
-    const { execSync } = require('child_process');
-    const out = execSync('php artisan --version 2>&1', { cwd: BACKEND_DIR, timeout: 10000 }).toString().trim();
-    pushLog('Boot test: ' + out);
-    console.log(`[php] Boot test OK: ${out}`);
-  } catch (e) {
-    const errMsg = e.stdout ? e.stdout.toString() : e.message;
-    pushLog('Boot test FAILED: ' + errMsg);
-    console.error(`[php] Boot test FAILED: ${errMsg}`);
-  }
+function runLaravel(req, res) {
+  const chunks = [];
+  req.on('data', (c) => chunks.push(c));
+  req.on('error', () => res.destroy());
+  req.on('end', () => {
+    const body = Buffer.concat(chunks);
+    const secure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+    const hostHeader = req.headers.host || 'localhost';
 
-  // Use PHP built-in server directly (not artisan serve, which needs proc_open).
-  // The router script serves static files from public/ and routes the rest to Laravel.
-  phpProcess = spawn('php', [
-    '-S', phpHost(),
-    'server-router.php'
-  ], {
-    cwd: BACKEND_DIR,
-    stdio: ['ignore', 'pipe', 'pipe'],
-    env: { ...process.env }
-  });
+    const env = {
+      ...process.env,
+      GATEWAY_INTERFACE: 'CGI/1.1',
+      SERVER_PROTOCOL: 'HTTP/1.1',
+      SERVER_SOFTWARE: 'node-cgi-bridge',
+      REDIRECT_STATUS: '200', // required by php-cgi
+      REQUEST_METHOD: req.method,
+      REQUEST_URI: req.originalUrl,
+      QUERY_STRING: req.originalUrl.includes('?') ? req.originalUrl.split('?').slice(1).join('?') : '',
+      SCRIPT_FILENAME: path.join(PUBLIC_DIR, 'index.php'),
+      SCRIPT_NAME: '/index.php',
+      PHP_SELF: '/index.php',
+      DOCUMENT_ROOT: PUBLIC_DIR,
+      SERVER_NAME: hostHeader.split(':')[0],
+      SERVER_PORT: secure ? '443' : String(PORT),
+      REMOTE_ADDR: req.ip || '127.0.0.1',
+      CONTENT_LENGTH: String(body.length),
+      CONTENT_TYPE: req.headers['content-type'] || '',
+    };
+    if (secure) env.HTTPS = 'on';
 
-  phpProcess.stdout.on('data', (data) => {
-    const msg = data.toString().trim();
-    if (msg) {
-      console.log(`[php] ${msg}`);
-      pushLog(msg);
+    for (const [name, value] of Object.entries(req.headers)) {
+      if (name === 'content-type' || name === 'content-length') continue;
+      env['HTTP_' + name.toUpperCase().replace(/-/g, '_')] = Array.isArray(value) ? value.join(', ') : value;
     }
-    if (msg.includes('started')) phpReady = true;
-  });
 
-  phpProcess.stderr.on('data', (data) => {
-    const msg = data.toString().trim();
-    if (msg) {
-      console.error(`[php] ${msg}`);
-      pushLog('STDERR: ' + msg);
-    }
-  });
+    const php = spawn('php-cgi', [], { cwd: PUBLIC_DIR, env, stdio: ['pipe', 'pipe', 'pipe'] });
 
-  phpProcess.on('error', (err) => {
-    console.error(`[php] Failed to start PHP: ${err.message}`);
-    pushLog('SPAWN ERROR: ' + err.message);
-  });
+    const out = [];
+    let stderr = '';
+    let finished = false;
 
-  phpProcess.on('close', (code) => {
-    phpReady = false;
-    const msg = `Process exited with code ${code}. Restarting in 5s...`;
-    console.error(`[php] ${msg}`);
-    pushLog(msg);
-    if (code !== null) {
-      setTimeout(startPhp, 5000);
-    }
-  });
+    const fail = (message) => {
+      if (finished) return;
+      finished = true;
+      pushLog(message);
+      if (!res.headersSent) {
+        res.status(502).json({ error: 'Backend API Error', message: 'The PHP backend failed to handle the request.' });
+      } else {
+        res.end();
+      }
+    };
 
-  // Mark ready after a short delay even if we didn't see the "started" message
-  setTimeout(() => { phpReady = true; }, 2000);
+    const timer = setTimeout(() => {
+      php.kill('SIGKILL');
+      fail(`php-cgi timed out: ${req.method} ${req.originalUrl}`);
+    }, 60000);
+
+    php.on('error', (err) => { clearTimeout(timer); fail('Failed to spawn php-cgi: ' + err.message); });
+    php.stdin.on('error', () => {}); // ignore EPIPE if PHP exits early
+    php.stdout.on('data', (d) => out.push(d));
+    php.stderr.on('data', (d) => { stderr += d.toString(); });
+
+    php.on('close', (code) => {
+      clearTimeout(timer);
+      if (finished) return;
+      const raw = Buffer.concat(out);
+
+      // Split CGI headers from the body
+      let sep = raw.indexOf('\r\n\r\n');
+      let sepLen = 4;
+      if (sep === -1) { sep = raw.indexOf('\n\n'); sepLen = 2; }
+      if (sep === -1) {
+        return fail(`php-cgi exit ${code}, no CGI headers. stderr: ${stderr.trim()} stdout: ${raw.toString('utf8', 0, 500)}`);
+      }
+
+      const headerLines = raw.toString('utf8', 0, sep).split(/\r?\n/);
+      const payload = raw.subarray(sep + sepLen);
+      let status = 200;
+      const headers = {};
+      for (const line of headerLines) {
+        const idx = line.indexOf(':');
+        if (idx === -1) continue;
+        const key = line.slice(0, idx).trim();
+        const val = line.slice(idx + 1).trim();
+        const lower = key.toLowerCase();
+        if (lower === 'status') {
+          status = parseInt(val, 10) || 200;
+        } else if (lower === 'set-cookie') {
+          (headers['set-cookie'] = headers['set-cookie'] || []).push(val);
+        } else {
+          headers[lower] = val;
+        }
+      }
+      delete headers['content-length'];
+      delete headers['transfer-encoding'];
+
+      if (status >= 500) {
+        pushLog(`HTTP ${status} on ${req.method} ${req.originalUrl}. stderr: ${stderr.trim().slice(0, 500)} body: ${payload.toString('utf8', 0, 500)}`);
+      }
+      lastPhpOk = new Date().toISOString();
+
+      finished = true;
+      res.status(status);
+      for (const [k, v] of Object.entries(headers)) res.setHeader(k, v);
+      res.setHeader('content-length', payload.length);
+      res.end(payload);
+    });
+
+    php.stdin.end(body);
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -168,128 +198,43 @@ async function startPhp() {
 // ---------------------------------------------------------------------------
 app.set('trust proxy', true);
 
-// Health check
 app.get('/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    php: phpReady ? 'running' : 'starting',
-    timestamp: new Date().toISOString()
-  });
+  res.json({ status: 'ok', lastPhpOk, timestamp: new Date().toISOString() });
 });
 
-// Debug endpoint — shows PHP logs to diagnose startup issues
+// Recent PHP-side errors (temporary diagnostic; remove once stable)
 app.get('/debug/php-logs', (req, res) => {
-  res.json({ phpReady, logs: phpLogs });
+  res.json({ lastPhpOk, logs: phpLogs });
 });
 
+// Laravel routes
+app.use('/api', runLaravel);
+app.use('/sanctum', runLaravel);
 
-// Debug endpoint — probes the PHP server directly and lists listening sockets
-app.get('/debug/probe', (req, res) => {
-  const out = { phpPort: PHP_PORT, phpPid: phpProcess && phpProcess.pid, phpAlive: !!(phpProcess && phpProcess.exitCode === null) };
-  const { exec } = require('child_process');
-  const http = require('http');
-  const tryGet = (host) => new Promise((resolve) => {
-    const r = http.get({ host, port: PHP_PORT, path: '/', timeout: 3000 }, (resp) => {
-      resp.resume();
-      resolve(`HTTP ${resp.statusCode}`);
-    });
-    r.on('error', (e) => resolve('ERR ' + e.code + ' ' + e.message));
-    r.on('timeout', () => { r.destroy(); resolve('TIMEOUT'); });
-  });
-  exec('(ss -ltnp 2>&1 || netstat -ltnp 2>&1) | head -40', (e, so, se) => {
-    out.sockets = (so || se || (e && e.message) || '').split('\n');
-    Promise.all([tryGet('127.0.0.1'), tryGet('localhost'), tryGet('::1')]).then(([a, b, c]) => {
-      out.get127 = a; out.getLocalhost = b; out.getIPv6 = c;
-      res.json(out);
-    });
-  });
-});
+// Uploaded files (the public/storage symlink can't be created on this host)
+app.use('/storage', express.static(path.join(BACKEND_DIR, 'storage', 'app', 'public'), { maxAge: '1d' }));
 
-
-app.get('/debug/env', (req, res) => {
-  const { exec } = require('child_process');
-  exec('which php php-cgi php-fpm lsphp 2>&1; echo ---; ls -l "$(which php)" 2>&1; echo ---; php -v 2>&1 | head -2; echo ---; php-cgi -v 2>&1 | head -2; echo ---; php -r "echo php_sapi_name(), PHP_EOL, ini_get(\'disable_functions\'), PHP_EOL;" 2>&1; echo ---; curl -s -m 3 -o /dev/null -w "shell-curl:%{http_code}" http://127.0.0.1:' + PHP_PORT + '/ 2>&1', { timeout: 15000 }, (e, so, se) => {
-    res.type('text/plain').send((so || '') + (se || '') + (e ? '\nexec error: ' + e.message : ''));
-  });
-});
-
-// Proxy /sanctum to Laravel (needed for CSRF cookies)
-app.use('/sanctum', proxy(phpHost, {
-  proxyReqPathResolver: (req) => '/sanctum' + req.url,
-  proxyErrorHandler: (err, res) => {
-    console.error('[proxy] Sanctum error:', err.message); pushLog('PROXY SANCTUM ERROR: ' + err.message);
-    res.status(502).json({ error: 'Backend not ready', message: 'Laravel is still starting up.' });
-  }
-}));
-
-// Proxy /api to Laravel
-app.use('/api', proxy(phpHost, {
-  proxyReqPathResolver: (req) => '/api' + req.url,
-  proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
-    proxyReqOpts.headers['X-Forwarded-For'] = srcReq.ip;
-    proxyReqOpts.headers['X-Forwarded-Proto'] = srcReq.protocol;
-    proxyReqOpts.headers['X-Forwarded-Host'] = srcReq.get('host');
-    return proxyReqOpts;
-  },
-  proxyErrorHandler: (err, res) => {
-    console.error('[proxy] API error:', err.message); pushLog('PROXY API ERROR: ' + err.message + ' (target ' + phpHost() + ')');
-    res.status(502).json({
-      error: 'Backend API Error',
-      message: phpReady
-        ? 'Laravel returned an error. Check runtime logs.'
-        : 'Laravel is still starting up. Try again in a few seconds.'
-    });
-  }
-}));
-
-// Proxy /storage to Laravel (uploaded files, barcodes, etc.)
-app.use('/storage', proxy(phpHost, {
-  proxyReqPathResolver: (req) => '/storage' + req.url,
-  proxyErrorHandler: (err, res) => {
-    res.status(502).json({ error: 'Storage not available' });
-  }
-}));
-
-// Serve React frontend
+// React frontend
 const frontendPath = path.join(__dirname, 'build');
 app.use(express.static(frontendPath, { maxAge: '1d', etag: true }));
 
-// SPA fallback — serve index.html for all other routes
+// SPA fallback
 app.get('*', (req, res) => {
-  const indexPath = path.join(frontendPath, 'index.html');
-  res.sendFile(indexPath, (err) => {
-    if (err) {
-      res.status(500).send('Frontend not found. Build may have failed.');
-    }
+  res.sendFile(path.join(frontendPath, 'index.html'), (err) => {
+    if (err) res.status(500).send('Frontend not found. Build may have failed.');
   });
 });
 
-// Error handler
 app.use((err, req, res, next) => {
   console.error('Server Error:', err);
   res.status(500).json({ error: 'Internal Server Error' });
 });
 
 // ---------------------------------------------------------------------------
-// 4. Boot sequence
+// 4. Boot
 // ---------------------------------------------------------------------------
 generateLaravelEnv();
-startPhp();
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`[server] U-EventTrack running on port ${PORT}`);
-  console.log(`[server] Frontend: http://localhost:${PORT}`);
-  console.log('[server] API proxy: /api -> local PHP server');
-});
-
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('[server] SIGTERM received, shutting down...');
-  if (phpProcess) phpProcess.kill();
-  process.exit(0);
-});
-
-process.on('SIGINT', () => {
-  if (phpProcess) phpProcess.kill();
-  process.exit(0);
 });
