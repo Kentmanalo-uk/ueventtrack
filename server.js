@@ -12,7 +12,7 @@ app.set('trust proxy', true);
 // Log all requests in development
 if (process.env.NODE_ENV !== 'production') {
   app.use((req, res, next) => {
-    console.log(${req.method} ${req.url});
+    console.log(`${req.method} ${req.url}`);
     next();
   });
 }
@@ -37,7 +37,7 @@ app.use('/storage', proxy(LARAVEL_HOST, {
 app.use('/api', proxy(LARAVEL_HOST, {
   proxyReqPathResolver: (req) => {
     const url = '/api' + req.url;
-    console.log(Proxying API: ${req.method} ${url});
+    console.log(`Proxying API: ${req.method} ${url}`);
     return url;
   },
   proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
@@ -50,24 +50,24 @@ app.use('/api', proxy(LARAVEL_HOST, {
   userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
     // Log API responses in development
     if (process.env.NODE_ENV !== 'production') {
-      console.log(API Response: ${userRes.statusCode} ${userReq.url});
+      console.log(`API Response: ${userRes.statusCode} ${userReq.url}`);
     }
     return proxyResData;
   },
   proxyErrorHandler: (err, res, next) => {
-    console.error('❌ Laravel API Proxy Error:', err.message);
-    res.status(500).json({
+    console.error('Laravel API Proxy Error:', err.message);
+    res.status(502).json({
       error: 'Backend API Error',
-      message: 'The Laravel backend API is not responding. Please ensure Laravel is running on port 8000.',
+      message: 'The Laravel backend API is not responding.',
       details: process.env.NODE_ENV === 'production' ? undefined : err.message
     });
   }
 }));
 
-// Serve React static files from frontend/dist
-const frontendPath = path.join(__dirname, 'frontend', 'dist');
+// Serve React static files from build directory (output of vite build)
+const frontendPath = path.join(__dirname, 'build');
 app.use(express.static(frontendPath, {
-  maxAge: '1d', // Cache static assets for 1 day
+  maxAge: '1d',
   etag: true
 }));
 
@@ -94,24 +94,9 @@ app.use((err, req, res, next) => {
 
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
-  console.log('\n🚀 U-EventTrack Server Started');
-  console.log('=====================================');
-  console.log(📱 Frontend:        http://localhost:${PORT});
-  console.log(🔌 API Proxy:       http://localhost:${PORT}/api -> http://${LARAVEL_HOST}/api);
-  console.log📦 Storage Proxy:   http://localhost:${PORT}/storage -> http://${LARAVEL_HOST}/storage`);
-  console.log🏥 Health Check:    http://localhost:${PORT}/health`);
-  console.log🌍 Environment:     ${process.env.NODE_ENV || 'development'}`);
-  console.log('=====================================\n');
-
-  // Warn if Laravel backend is not reachable
-  const http = require('http');
-  http.get(http://${LARAVEL_HOST}/api/health, (res) => {
-    if (res.statusCode === 200) {
-      console.log('✅ Laravel backend is reachable\n');
-    }
-  }).on('error', (err) => {
-    console.warn('⚠️  WARNING: Laravel backend is not reachable at', LARAVEL_HOST);
-    console.warn('   Make sure Laravel is running: cd backend && php artisan serve\n');
-  });
+  console.log(`\nU-EventTrack Server Started`);
+  console.log(`Frontend:    http://localhost:${PORT}`);
+  console.log(`API Proxy:   http://localhost:${PORT}/api -> http://${LARAVEL_HOST}/api`);
+  console.log(`Health:      http://localhost:${PORT}/health`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}\n`);
 });
-process.env.LA
