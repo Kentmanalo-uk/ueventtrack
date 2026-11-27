@@ -6,7 +6,21 @@ const proxy = require('express-http-proxy');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const PHP_PORT = 8080;
+const net = require('net');
+let PHP_PORT = 0; // chosen at runtime: a free port assigned by the OS
+const phpHost = () => `127.0.0.1:${PHP_PORT}`;
+
+function getFreePort() {
+  return new Promise((resolve, reject) => {
+    const srv = net.createServer();
+    srv.unref();
+    srv.on('error', reject);
+    srv.listen(0, '127.0.0.1', () => {
+      const { port } = srv.address();
+      srv.close(() => resolve(port));
+    });
+  });
+}
 const BACKEND_DIR = path.join(__dirname, 'backend');
 
 // ---------------------------------------------------------------------------
@@ -80,22 +94,22 @@ function pushLog(msg) {
   if (phpLogs.length > 50) phpLogs.shift();
 }
 
-function startPhp() {
-  console.log(`[php] Starting Laravel on 127.0.0.1:${PHP_PORT}...`);
+async function startPhp() {
+  try {
+    PHP_PORT = await getFreePort();
+  } catch (e) {
+    pushLog('Could not find a free port: ' + e.message);
+    return setTimeout(startPhp, 5000);
+  }
+  console.log(`[php] Starting Laravel on ${phpHost()}...`);
   pushLog('Starting php -S on port ' + PHP_PORT);
 
-  // Quick boot test — check what PHP features are available
+  // Quick boot test — check that PHP and Laravel load
   try {
     const { execSync } = require('child_process');
     const out = execSync('php artisan --version 2>&1', { cwd: BACKEND_DIR, timeout: 10000 }).toString().trim();
     pushLog('Boot test: ' + out);
     console.log(`[php] Boot test OK: ${out}`);
-
-    // Kill any existing PHP process on our port
-    try {
-      execSync(`fuser -k ${PHP_PORT}/tcp 2>/dev/null || true`, { timeout: 5000 });
-      pushLog('Cleared port ' + PHP_PORT);
-    } catch (e) { /* ignore */ }
   } catch (e) {
     const errMsg = e.stdout ? e.stdout.toString() : e.message;
     pushLog('Boot test FAILED: ' + errMsg);
@@ -105,7 +119,7 @@ function startPhp() {
   // Use PHP built-in server directly (not artisan serve, which needs proc_open).
   // The router script serves static files from public/ and routes the rest to Laravel.
   phpProcess = spawn('php', [
-    '-S', `127.0.0.1:${PHP_PORT}`,
+    '-S', phpHost(),
     'server-router.php'
   ], {
     cwd: BACKEND_DIR,
@@ -169,7 +183,7 @@ app.get('/debug/php-logs', (req, res) => {
 });
 
 // Proxy /sanctum to Laravel (needed for CSRF cookies)
-app.use('/sanctum', proxy(`127.0.0.1:${PHP_PORT}`, {
+app.use('/sanctum', proxy(phpHost, {
   proxyReqPathResolver: (req) => '/sanctum' + req.url,
   proxyErrorHandler: (err, res) => {
     console.error('[proxy] Sanctum error:', err.message);
@@ -178,7 +192,7 @@ app.use('/sanctum', proxy(`127.0.0.1:${PHP_PORT}`, {
 }));
 
 // Proxy /api to Laravel
-app.use('/api', proxy(`127.0.0.1:${PHP_PORT}`, {
+app.use('/api', proxy(phpHost, {
   proxyReqPathResolver: (req) => '/api' + req.url,
   proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
     proxyReqOpts.headers['X-Forwarded-For'] = srcReq.ip;
@@ -198,7 +212,7 @@ app.use('/api', proxy(`127.0.0.1:${PHP_PORT}`, {
 }));
 
 // Proxy /storage to Laravel (uploaded files, barcodes, etc.)
-app.use('/storage', proxy(`127.0.0.1:${PHP_PORT}`, {
+app.use('/storage', proxy(phpHost, {
   proxyReqPathResolver: (req) => '/storage' + req.url,
   proxyErrorHandler: (err, res) => {
     res.status(502).json({ error: 'Storage not available' });
@@ -234,7 +248,7 @@ startPhp();
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`[server] U-EventTrack running on port ${PORT}`);
   console.log(`[server] Frontend: http://localhost:${PORT}`);
-  console.log(`[server] API proxy: /api -> 127.0.0.1:${PHP_PORT}`);
+  console.log('[server] API proxy: /api -> local PHP server');
 });
 
 // Graceful shutdown
