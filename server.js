@@ -84,7 +84,7 @@ function startPhp() {
   console.log(`[php] Starting Laravel on 127.0.0.1:${PHP_PORT}...`);
   pushLog('Starting php artisan serve...');
 
-  // Quick boot test first
+  // Quick boot test — check what PHP features are available
   try {
     const { execSync } = require('child_process');
     const out = execSync('php artisan --version 2>&1', { cwd: BACKEND_DIR, timeout: 10000 }).toString().trim();
@@ -96,11 +96,11 @@ function startPhp() {
     console.error(`[php] Boot test FAILED: ${errMsg}`);
   }
 
+  // Use PHP built-in server directly (not artisan serve, which needs proc_open).
+  // The router script serves static files from public/ and routes the rest to Laravel.
   phpProcess = spawn('php', [
-    'artisan', 'serve',
-    '--host=127.0.0.1',
-    `--port=${PHP_PORT}`,
-    '--no-reload'
+    '-S', `127.0.0.1:${PHP_PORT}`,
+    'server-router.php'
   ], {
     cwd: BACKEND_DIR,
     stdio: ['ignore', 'pipe', 'pipe'],
