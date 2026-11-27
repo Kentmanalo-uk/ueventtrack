@@ -186,7 +186,7 @@ app.get('/debug/php-logs', (req, res) => {
 app.use('/sanctum', proxy(phpHost, {
   proxyReqPathResolver: (req) => '/sanctum' + req.url,
   proxyErrorHandler: (err, res) => {
-    console.error('[proxy] Sanctum error:', err.message);
+    console.error('[proxy] Sanctum error:', err.message); pushLog('PROXY SANCTUM ERROR: ' + err.message);
     res.status(502).json({ error: 'Backend not ready', message: 'Laravel is still starting up.' });
   }
 }));
@@ -201,7 +201,7 @@ app.use('/api', proxy(phpHost, {
     return proxyReqOpts;
   },
   proxyErrorHandler: (err, res) => {
-    console.error('[proxy] API error:', err.message);
+    console.error('[proxy] API error:', err.message); pushLog('PROXY API ERROR: ' + err.message + ' (target ' + phpHost() + ')');
     res.status(502).json({
       error: 'Backend API Error',
       message: phpReady
