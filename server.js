@@ -1,84 +1,183 @@
 const express = require('express');
 const path = require('path');
+const { spawn } = require('child_process');
+const fs = require('fs');
 const proxy = require('express-http-proxy');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const LARAVEL_HOST = process.env.LARAVEL_HOST || 'localhost:8000';
+const PHP_PORT = 8000;
+const BACKEND_DIR = path.join(__dirname, 'backend');
 
-// Trust proxy (required for Hostinger behind reverse proxy)
-app.set('trust proxy', true);
+// ---------------------------------------------------------------------------
+// 1. Generate Laravel .env from Node.js environment variables
+// ---------------------------------------------------------------------------
+function generateLaravelEnv() {
+  const envPath = path.join(BACKEND_DIR, '.env');
 
-// Log all requests in development
-if (process.env.NODE_ENV !== 'production') {
-  app.use((req, res, next) => {
-    console.log(`${req.method} ${req.url}`);
-    next();
-  });
+  // If essential DB vars are set, generate .env from environment
+  if (process.env.DB_DATABASE) {
+    const lines = [
+      `APP_NAME="${process.env.APP_NAME || 'U-EventTrack'}"`,
+      `APP_ENV=production`,
+      `APP_KEY=${process.env.APP_KEY || ''}`,
+      `APP_DEBUG=false`,
+      `APP_URL=${process.env.APP_URL || 'https://ueventtrack.online'}`,
+      `APP_TIMEZONE=UTC`,
+      ``,
+      `DB_CONNECTION=${process.env.DB_CONNECTION || 'mysql'}`,
+      `DB_HOST=${process.env.DB_HOST || '127.0.0.1'}`,
+      `DB_PORT=${process.env.DB_PORT || '3306'}`,
+      `DB_DATABASE=${process.env.DB_DATABASE}`,
+      `DB_USERNAME=${process.env.DB_USERNAME || ''}`,
+      `DB_PASSWORD=${process.env.DB_PASSWORD || ''}`,
+      ``,
+      `SESSION_DRIVER=${process.env.SESSION_DRIVER || 'database'}`,
+      `SESSION_LIFETIME=120`,
+      `SESSION_SECURE_COOKIE=true`,
+      `SESSION_DOMAIN=${process.env.SESSION_DOMAIN || '.ueventtrack.online'}`,
+      `SESSION_SAME_SITE=lax`,
+      ``,
+      `CACHE_STORE=database`,
+      `QUEUE_CONNECTION=database`,
+      `BROADCAST_CONNECTION=log`,
+      `FILESYSTEM_DISK=local`,
+      ``,
+      `LOG_CHANNEL=stack`,
+      `LOG_STACK=single`,
+      `LOG_LEVEL=${process.env.LOG_LEVEL || 'error'}`,
+      ``,
+      `SANCTUM_STATEFUL_DOMAINS=${process.env.SANCTUM_STATEFUL_DOMAINS || 'ueventtrack.online'}`,
+      `FRONTEND_URL=${process.env.FRONTEND_URL || 'https://ueventtrack.online'}`,
+      ``,
+      `MAIL_MAILER=log`,
+      `MAIL_FROM_ADDRESS="${process.env.MAIL_FROM_ADDRESS || 'hello@ueventtrack.online'}"`,
+      `MAIL_FROM_NAME="\${APP_NAME}"`,
+      ``,
+      `TRUSTED_PROXIES=*`,
+      ``,
+      `GOOGLE_CLIENT_ID=${process.env.GOOGLE_CLIENT_ID || ''}`,
+      `GOOGLE_CLIENT_SECRET=${process.env.GOOGLE_CLIENT_SECRET || ''}`,
+      `GOOGLE_REDIRECT_URI=${process.env.APP_URL || 'https://ueventtrack.online'}/api/auth/google/callback`,
+    ];
+    fs.writeFileSync(envPath, lines.join('\n') + '\n');
+    console.log('[init] Laravel .env generated from environment variables');
+  } else if (fs.existsSync(envPath)) {
+    console.log('[init] Using existing Laravel .env');
+  } else {
+    console.warn('[init] WARNING: No DB_DATABASE env var and no .env file found. API will not work.');
+  }
 }
 
-// Health check endpoint
+// ---------------------------------------------------------------------------
+// 2. Start PHP built-in server for Laravel
+// ---------------------------------------------------------------------------
+let phpProcess = null;
+let phpReady = false;
+
+function startPhp() {
+  console.log(`[php] Starting Laravel on 127.0.0.1:${PHP_PORT}...`);
+
+  phpProcess = spawn('php', [
+    'artisan', 'serve',
+    '--host=127.0.0.1',
+    `--port=${PHP_PORT}`,
+    '--no-reload'
+  ], {
+    cwd: BACKEND_DIR,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: { ...process.env }
+  });
+
+  phpProcess.stdout.on('data', (data) => {
+    const msg = data.toString().trim();
+    if (msg) console.log(`[php] ${msg}`);
+    if (msg.includes('started')) phpReady = true;
+  });
+
+  phpProcess.stderr.on('data', (data) => {
+    const msg = data.toString().trim();
+    if (msg) console.error(`[php] ${msg}`);
+  });
+
+  phpProcess.on('error', (err) => {
+    console.error(`[php] Failed to start PHP: ${err.message}`);
+    console.error('[php] PHP may not be available on this server.');
+  });
+
+  phpProcess.on('close', (code) => {
+    phpReady = false;
+    if (code !== null) {
+      console.error(`[php] Process exited with code ${code}. Restarting in 3s...`);
+      setTimeout(startPhp, 3000);
+    }
+  });
+
+  // Mark ready after a short delay even if we didn't see the "started" message
+  setTimeout(() => { phpReady = true; }, 2000);
+}
+
+// ---------------------------------------------------------------------------
+// 3. Express setup
+// ---------------------------------------------------------------------------
+app.set('trust proxy', true);
+
+// Health check
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
-    service: 'U-EventTrack',
+    php: phpReady ? 'running' : 'starting',
     timestamp: new Date().toISOString()
   });
 });
 
-// Serve Laravel storage files (uploaded images, barcodes, etc.)
-app.use('/storage', proxy(LARAVEL_HOST, {
-  proxyReqPathResolver: (req) => {
-    return '/storage' + req.url;
+// Proxy /sanctum to Laravel (needed for CSRF cookies)
+app.use('/sanctum', proxy(`127.0.0.1:${PHP_PORT}`, {
+  proxyReqPathResolver: (req) => '/sanctum' + req.url,
+  proxyErrorHandler: (err, res) => {
+    console.error('[proxy] Sanctum error:', err.message);
+    res.status(502).json({ error: 'Backend not ready', message: 'Laravel is still starting up.' });
   }
 }));
 
-// Proxy all /api requests to Laravel backend
-app.use('/api', proxy(LARAVEL_HOST, {
-  proxyReqPathResolver: (req) => {
-    const url = '/api' + req.url;
-    console.log(`Proxying API: ${req.method} ${url}`);
-    return url;
-  },
+// Proxy /api to Laravel
+app.use('/api', proxy(`127.0.0.1:${PHP_PORT}`, {
+  proxyReqPathResolver: (req) => '/api' + req.url,
   proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
-    // Forward original headers
     proxyReqOpts.headers['X-Forwarded-For'] = srcReq.ip;
     proxyReqOpts.headers['X-Forwarded-Proto'] = srcReq.protocol;
     proxyReqOpts.headers['X-Forwarded-Host'] = srcReq.get('host');
     return proxyReqOpts;
   },
-  userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
-    // Log API responses in development
-    if (process.env.NODE_ENV !== 'production') {
-      console.log(`API Response: ${userRes.statusCode} ${userReq.url}`);
-    }
-    return proxyResData;
-  },
-  proxyErrorHandler: (err, res, next) => {
-    console.error('Laravel API Proxy Error:', err.message);
+  proxyErrorHandler: (err, res) => {
+    console.error('[proxy] API error:', err.message);
     res.status(502).json({
       error: 'Backend API Error',
-      message: 'The Laravel backend API is not responding.',
-      details: process.env.NODE_ENV === 'production' ? undefined : err.message
+      message: phpReady
+        ? 'Laravel returned an error. Check runtime logs.'
+        : 'Laravel is still starting up. Try again in a few seconds.'
     });
   }
 }));
 
-// Serve React static files from build directory (output of vite build)
-const frontendPath = path.join(__dirname, 'build');
-app.use(express.static(frontendPath, {
-  maxAge: '1d',
-  etag: true
+// Proxy /storage to Laravel (uploaded files, barcodes, etc.)
+app.use('/storage', proxy(`127.0.0.1:${PHP_PORT}`, {
+  proxyReqPathResolver: (req) => '/storage' + req.url,
+  proxyErrorHandler: (err, res) => {
+    res.status(502).json({ error: 'Storage not available' });
+  }
 }));
 
-// Serve React app for all other routes (SPA fallback)
-// This must be LAST to allow API and storage routes to work
+// Serve React frontend
+const frontendPath = path.join(__dirname, 'build');
+app.use(express.static(frontendPath, { maxAge: '1d', etag: true }));
+
+// SPA fallback — serve index.html for all other routes
 app.get('*', (req, res) => {
   const indexPath = path.join(frontendPath, 'index.html');
   res.sendFile(indexPath, (err) => {
     if (err) {
-      console.error('Error serving React app:', err);
-      res.status(500).send('Frontend application not found. Please run "npm run build" first.');
+      res.status(500).send('Frontend not found. Build may have failed.');
     }
   });
 });
@@ -86,17 +185,29 @@ app.get('*', (req, res) => {
 // Error handler
 app.use((err, req, res, next) => {
   console.error('Server Error:', err);
-  res.status(500).json({
-    error: 'Internal Server Error',
-    message: process.env.NODE_ENV === 'production' ? 'Something went wrong' : err.message
-  });
+  res.status(500).json({ error: 'Internal Server Error' });
 });
 
-// Start server
+// ---------------------------------------------------------------------------
+// 4. Boot sequence
+// ---------------------------------------------------------------------------
+generateLaravelEnv();
+startPhp();
+
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`\nU-EventTrack Server Started`);
-  console.log(`Frontend:    http://localhost:${PORT}`);
-  console.log(`API Proxy:   http://localhost:${PORT}/api -> http://${LARAVEL_HOST}/api`);
-  console.log(`Health:      http://localhost:${PORT}/health`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}\n`);
+  console.log(`[server] U-EventTrack running on port ${PORT}`);
+  console.log(`[server] Frontend: http://localhost:${PORT}`);
+  console.log(`[server] API proxy: /api -> 127.0.0.1:${PHP_PORT}`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('[server] SIGTERM received, shutting down...');
+  if (phpProcess) phpProcess.kill();
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  if (phpProcess) phpProcess.kill();
+  process.exit(0);
 });
