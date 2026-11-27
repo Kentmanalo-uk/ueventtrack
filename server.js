@@ -6,7 +6,7 @@ const proxy = require('express-http-proxy');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const PHP_PORT = 8000;
+const PHP_PORT = 8080;
 const BACKEND_DIR = path.join(__dirname, 'backend');
 
 // ---------------------------------------------------------------------------
@@ -82,7 +82,7 @@ function pushLog(msg) {
 
 function startPhp() {
   console.log(`[php] Starting Laravel on 127.0.0.1:${PHP_PORT}...`);
-  pushLog('Starting php artisan serve...');
+  pushLog('Starting php -S on port ' + PHP_PORT);
 
   // Quick boot test — check what PHP features are available
   try {
@@ -90,6 +90,12 @@ function startPhp() {
     const out = execSync('php artisan --version 2>&1', { cwd: BACKEND_DIR, timeout: 10000 }).toString().trim();
     pushLog('Boot test: ' + out);
     console.log(`[php] Boot test OK: ${out}`);
+
+    // Kill any existing PHP process on our port
+    try {
+      execSync(`fuser -k ${PHP_PORT}/tcp 2>/dev/null || true`, { timeout: 5000 });
+      pushLog('Cleared port ' + PHP_PORT);
+    } catch (e) { /* ignore */ }
   } catch (e) {
     const errMsg = e.stdout ? e.stdout.toString() : e.message;
     pushLog('Boot test FAILED: ' + errMsg);
