@@ -74,9 +74,27 @@ function generateLaravelEnv() {
 // ---------------------------------------------------------------------------
 let phpProcess = null;
 let phpReady = false;
+const phpLogs = []; // ring buffer of last 50 log lines
+function pushLog(msg) {
+  phpLogs.push({ t: new Date().toISOString(), msg });
+  if (phpLogs.length > 50) phpLogs.shift();
+}
 
 function startPhp() {
   console.log(`[php] Starting Laravel on 127.0.0.1:${PHP_PORT}...`);
+  pushLog('Starting php artisan serve...');
+
+  // Quick boot test first
+  try {
+    const { execSync } = require('child_process');
+    const out = execSync('php artisan --version 2>&1', { cwd: BACKEND_DIR, timeout: 10000 }).toString().trim();
+    pushLog('Boot test: ' + out);
+    console.log(`[php] Boot test OK: ${out}`);
+  } catch (e) {
+    const errMsg = e.stdout ? e.stdout.toString() : e.message;
+    pushLog('Boot test FAILED: ' + errMsg);
+    console.error(`[php] Boot test FAILED: ${errMsg}`);
+  }
 
   phpProcess = spawn('php', [
     'artisan', 'serve',
@@ -91,25 +109,33 @@ function startPhp() {
 
   phpProcess.stdout.on('data', (data) => {
     const msg = data.toString().trim();
-    if (msg) console.log(`[php] ${msg}`);
+    if (msg) {
+      console.log(`[php] ${msg}`);
+      pushLog(msg);
+    }
     if (msg.includes('started')) phpReady = true;
   });
 
   phpProcess.stderr.on('data', (data) => {
     const msg = data.toString().trim();
-    if (msg) console.error(`[php] ${msg}`);
+    if (msg) {
+      console.error(`[php] ${msg}`);
+      pushLog('STDERR: ' + msg);
+    }
   });
 
   phpProcess.on('error', (err) => {
     console.error(`[php] Failed to start PHP: ${err.message}`);
-    console.error('[php] PHP may not be available on this server.');
+    pushLog('SPAWN ERROR: ' + err.message);
   });
 
   phpProcess.on('close', (code) => {
     phpReady = false;
+    const msg = `Process exited with code ${code}. Restarting in 5s...`;
+    console.error(`[php] ${msg}`);
+    pushLog(msg);
     if (code !== null) {
-      console.error(`[php] Process exited with code ${code}. Restarting in 3s...`);
-      setTimeout(startPhp, 3000);
+      setTimeout(startPhp, 5000);
     }
   });
 
@@ -129,6 +155,11 @@ app.get('/health', (req, res) => {
     php: phpReady ? 'running' : 'starting',
     timestamp: new Date().toISOString()
   });
+});
+
+// Debug endpoint — shows PHP logs to diagnose startup issues
+app.get('/debug/php-logs', (req, res) => {
+  res.json({ phpReady, logs: phpLogs });
 });
 
 // Proxy /sanctum to Laravel (needed for CSRF cookies)
