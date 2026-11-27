@@ -182,6 +182,29 @@ app.get('/debug/php-logs', (req, res) => {
   res.json({ phpReady, logs: phpLogs });
 });
 
+
+// Debug endpoint — probes the PHP server directly and lists listening sockets
+app.get('/debug/probe', (req, res) => {
+  const out = { phpPort: PHP_PORT, phpPid: phpProcess && phpProcess.pid, phpAlive: !!(phpProcess && phpProcess.exitCode === null) };
+  const { exec } = require('child_process');
+  const http = require('http');
+  const tryGet = (host) => new Promise((resolve) => {
+    const r = http.get({ host, port: PHP_PORT, path: '/', timeout: 3000 }, (resp) => {
+      resp.resume();
+      resolve(`HTTP ${resp.statusCode}`);
+    });
+    r.on('error', (e) => resolve('ERR ' + e.code + ' ' + e.message));
+    r.on('timeout', () => { r.destroy(); resolve('TIMEOUT'); });
+  });
+  exec('(ss -ltnp 2>&1 || netstat -ltnp 2>&1) | head -40', (e, so, se) => {
+    out.sockets = (so || se || (e && e.message) || '').split('\n');
+    Promise.all([tryGet('127.0.0.1'), tryGet('localhost'), tryGet('::1')]).then(([a, b, c]) => {
+      out.get127 = a; out.getLocalhost = b; out.getIPv6 = c;
+      res.json(out);
+    });
+  });
+});
+
 // Proxy /sanctum to Laravel (needed for CSRF cookies)
 app.use('/sanctum', proxy(phpHost, {
   proxyReqPathResolver: (req) => '/sanctum' + req.url,
