@@ -138,6 +138,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/student-profile', [AuthController::class, 'studentProfile']);
     Route::put('/student-password', [AuthController::class, 'updateStudentPassword']);
     Route::post('/student-profile-image', [AuthController::class, 'uploadProfileImage']);
+    Route::post('/student/enroll-face', [StudentController::class, 'enrollFace']);
     
     // Student fines
     Route::get('/student-fines', [FineController::class, 'studentFines']);

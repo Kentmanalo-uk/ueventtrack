@@ -200,4 +200,60 @@ class StudentController extends Controller
             'student' => $student->fresh(),
         ], 200);
     }
+
+    /**
+     * Enroll face data for the authenticated student (mobile app)
+     */
+    public function enrollFace(Request $request): JsonResponse
+    {
+        $request->validate([
+            'face_data' => 'required|string',
+        ]);
+
+        $user = $request->user();
+        
+        // Get the student record for this user
+        $student = Student::where('email', $user->email)->first();
+        
+        if (!$student) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Student record not found'
+            ], 404);
+        }
+
+        try {
+            // Update student with face data (same as web version)
+            $student->update([
+                'face_data' => $request->face_data,
+                'face_enrolled_at' => now(),
+            ]);
+
+            // Clear cache
+            Cache::forget('students_active');
+
+            // Log the action
+            AuditLog::record(
+                'face_enrolled',
+                "Student {$student->first_name} {$student->last_name} enrolled face via mobile app",
+                'Student',
+                $student->id,
+                $user->id,
+                $request->ip()
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Face enrolled successfully',
+                'face_enrolled_at' => $student->fresh()->face_enrolled_at
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Face enrollment error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to enroll face: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

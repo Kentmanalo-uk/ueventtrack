@@ -1479,4 +1479,57 @@ export const styles = createStyles({
     fontSize: 13,
     fontWeight: '500',
   },
+
+  // Carousel Styles
+  carouselContainer: {
+    marginBottom: 16,
+    marginTop: 0,
+    height: 160,
+  },
+  carouselSlide: {
+    width: '100%',
+    height: 160,
+    backgroundColor: '#000',
+  },
+  carouselImage: {
+    width: '100%',
+    height: 160,
+  },
+  carouselDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  carouselDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#d1d5db',
+    marginHorizontal: 3,
+  },
+  carouselDotActive: {
+    width: 20,
+    height: 6,
+    backgroundColor: '#10b981',
+  },
 });
+
+  // Face Enrollment Button
+  enrollButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#10b981',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 6,
+  },
+  enrollButtonEnrolled: {
+    backgroundColor: '#6b7280',
+  },
+  enrollButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },

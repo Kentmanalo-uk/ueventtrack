@@ -3,18 +3,36 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, A
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
+import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { createStyles } from './styles';
 import EventDetailsModal from './src/components/EventDetailsModal';
 import BarcodeScanner from './src/components/BarcodeScanner';
+import FaceEnrollment from './src/components/FaceEnrollment';
 import { useTheme } from './src/context/ThemeContext';
 
-const API_URL = 'http://10.0.5.65:8000/api';
+const API_URL = 'https://ueventtrack.online/api';
 
 // Configure axios timeout
 axios.defaults.timeout = 10000; // 10 seconds timeout
+
+// Announcement slides with LOCAL images (mobile-optimized 1080x608)
+const ANNOUNCEMENT_SLIDES = [
+  {
+    id: 1,
+    image: require('./assets/announcements/slide1_mobile.png'),
+  },
+  {
+    id: 2,
+    image: require('./assets/announcements/slide2_mobile.png'),
+  },
+  {
+    id: 3,
+    image: require('./assets/announcements/slide3_mobile.png'),
+  },
+];
 
 const FALLBACK_ANNOUNCEMENTS = [
   { id: 1, tag: 'Event', text: 'Campus Leadership Summit on April 5, 2026 at the Main Gymnasium. All students are encouraged to attend!' },
@@ -26,8 +44,68 @@ const FALLBACK_ANNOUNCEMENTS = [
 
 // Dashboard Tab Component
 function DashboardTab({ dashboardData, greeting, attendanceRate, streak, nextEvent, recentCheckins, formatDate, formatTime, styles }) {
+  const [carouselIndex, setCarouselIndex] = useState(0);
+  const scrollViewRef = React.useRef(null);
+  const { width: screenWidth } = require('react-native').Dimensions.get('window');
+  const slideWidth = screenWidth; // Full screen width
+
+  // Auto-advance carousel
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const nextIndex = (carouselIndex + 1) % ANNOUNCEMENT_SLIDES.length;
+      setCarouselIndex(nextIndex);
+      if (scrollViewRef.current) {
+        scrollViewRef.current.scrollTo({ 
+          x: nextIndex * slideWidth, 
+          animated: true 
+        });
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [carouselIndex, slideWidth]);
+
   return (
     <>
+      {/* Announcement Carousel */}
+      <View style={styles.carouselContainer}>
+        <ScrollView
+          ref={scrollViewRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          decelerationRate="fast"
+          snapToInterval={slideWidth}
+          snapToAlignment="center"
+          contentContainerStyle={{ paddingBottom: 0 }}
+          onMomentumScrollEnd={(event) => {
+            const index = Math.round(event.nativeEvent.contentOffset.x / slideWidth);
+            setCarouselIndex(index);
+          }}
+        >
+          {ANNOUNCEMENT_SLIDES.map((slide) => (
+            <View key={slide.id} style={[styles.carouselSlide, { width: slideWidth }]}>
+              <Image
+                source={slide.image}
+                style={styles.carouselImage}
+                resizeMode="cover"
+              />
+            </View>
+          ))}
+        </ScrollView>
+        {/* Dots Indicator */}
+        <View style={styles.carouselDots}>
+          {ANNOUNCEMENT_SLIDES.map((_, index) => (
+            <View
+              key={index}
+              style={[
+                styles.carouselDot,
+                index === carouselIndex && styles.carouselDotActive,
+              ]}
+            />
+          ))}
+        </View>
+      </View>
+
       {/* Next Event Banner */}
       {nextEvent && (
         <View style={styles.nextEventBanner}>
@@ -351,108 +429,167 @@ function AttendanceTab({ dashboardData, formatDate, formatTime, styles }) {
 }
 
 // Settings Tab Component
-function SettingsTab({ user, dashboardData, styles }) {
+function SettingsTab({ user, dashboardData, token, onFaceEnrolled, styles }) {
   const { isDark, toggleTheme } = useTheme();
   const student = dashboardData?.student;
+  const [showFaceEnrollment, setShowFaceEnrollment] = useState(false);
+
+  const hasFaceData = student?.face_data !== null && student?.face_data !== undefined;
 
   return (
-    <View style={styles.settingsContent}>
-      {/* Profile Section */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeaderRow}>
-          <Ionicons name="person" size={20} color="#10b981" />
-          <Text style={styles.sectionTitle}>Profile Information</Text>
-        </View>
-        
-        <View style={styles.profileInfoCard}>
-          <View style={styles.profileInfoRow}>
-            <Text style={styles.profileInfoLabel}>Name</Text>
-            <Text style={styles.profileInfoValue}>
-              {student?.first_name} {student?.last_name}
-            </Text>
+    <>
+      <View style={styles.settingsContent}>
+        {/* Profile Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <Ionicons name="person" size={20} color="#10b981" />
+            <Text style={styles.sectionTitle}>Profile Information</Text>
           </View>
-          <View style={styles.profileInfoRow}>
-            <Text style={styles.profileInfoLabel}>Student ID</Text>
-            <Text style={styles.profileInfoValue}>{student?.student_id}</Text>
-          </View>
-          <View style={styles.profileInfoRow}>
-            <Text style={styles.profileInfoLabel}>Email</Text>
-            <Text style={styles.profileInfoValue}>{student?.email || user?.email}</Text>
-          </View>
-          <View style={styles.profileInfoRow}>
-            <Text style={styles.profileInfoLabel}>Course</Text>
-            <Text style={styles.profileInfoValue}>{student?.course}</Text>
-          </View>
-          <View style={styles.profileInfoRow}>
-            <Text style={styles.profileInfoLabel}>Year Level</Text>
-            <Text style={styles.profileInfoValue}>Year {student?.year_level}</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Appearance Section */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeaderRow}>
-          <Ionicons name="color-palette" size={20} color="#10b981" />
-          <Text style={styles.sectionTitle}>Appearance</Text>
-        </View>
-        
-        <View style={styles.settingItem}>
-          <View style={styles.settingItemLeft}>
-            <View style={styles.settingIconBox}>
-              <Ionicons name={isDark ? "moon" : "sunny"} size={20} color="#10b981" />
-            </View>
-            <View style={styles.settingItemText}>
-              <Text style={styles.settingItemTitle}>Dark Mode</Text>
-              <Text style={styles.settingItemSubtitle}>
-                {isDark ? 'Dark theme enabled' : 'Light theme enabled'}
+          
+          <View style={styles.profileInfoCard}>
+            <View style={styles.profileInfoRow}>
+              <Text style={styles.profileInfoLabel}>Name</Text>
+              <Text style={styles.profileInfoValue}>
+                {student?.first_name} {student?.last_name}
               </Text>
             </View>
+            <View style={styles.profileInfoRow}>
+              <Text style={styles.profileInfoLabel}>Student ID</Text>
+              <Text style={styles.profileInfoValue}>{student?.student_id}</Text>
+            </View>
+            <View style={styles.profileInfoRow}>
+              <Text style={styles.profileInfoLabel}>Email</Text>
+              <Text style={styles.profileInfoValue}>{student?.email || user?.email}</Text>
+            </View>
+            <View style={styles.profileInfoRow}>
+              <Text style={styles.profileInfoLabel}>Course</Text>
+              <Text style={styles.profileInfoValue}>{student?.course}</Text>
+            </View>
+            <View style={styles.profileInfoRow}>
+              <Text style={styles.profileInfoLabel}>Year Level</Text>
+              <Text style={styles.profileInfoValue}>Year {student?.year_level}</Text>
+            </View>
           </View>
-          <Switch
-            value={isDark}
-            onValueChange={toggleTheme}
-            trackColor={{ false: '#d1d5db', true: '#10b981' }}
-            thumbColor={isDark ? '#fff' : '#f3f4f6'}
-          />
         </View>
-      </View>
 
-      {/* About Section */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeaderRow}>
-          <Ionicons name="information-circle" size={20} color="#10b981" />
-          <Text style={styles.sectionTitle}>About</Text>
+        {/* Face Recognition Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <Ionicons name="scan" size={20} color="#10b981" />
+            <Text style={styles.sectionTitle}>Face Recognition</Text>
+          </View>
+          
+          <View style={styles.settingItem}>
+            <View style={styles.settingItemLeft}>
+              <View style={[styles.settingIconBox, { backgroundColor: hasFaceData ? '#dcfce7' : '#fef3c7' }]}>
+                <Ionicons 
+                  name={hasFaceData ? "checkmark-circle" : "alert-circle"} 
+                  size={20} 
+                  color={hasFaceData ? "#16a34a" : "#f59e0b"} 
+                />
+              </View>
+              <View style={styles.settingItemText}>
+                <Text style={styles.settingItemTitle}>Face Data</Text>
+                <Text style={styles.settingItemSubtitle}>
+                  {hasFaceData ? 'Enrolled - Ready for recognition' : 'Not enrolled yet'}
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              style={[styles.enrollButton, hasFaceData && styles.enrollButtonEnrolled]}
+              onPress={() => setShowFaceEnrollment(true)}
+            >
+              <Ionicons 
+                name={hasFaceData ? "refresh" : "camera"} 
+                size={18} 
+                color="#fff" 
+              />
+              <Text style={styles.enrollButtonText}>
+                {hasFaceData ? 'Re-enroll' : 'Enroll Now'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
-        
-        <View style={styles.aboutCard}>
-          <Text style={styles.aboutTitle}>U-EventTrack</Text>
-          <Text style={styles.aboutDescription}>
-            Digital attendance system for Mindoro State University, Bongabong Campus USG events.
+
+        {/* Appearance Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <Ionicons name="color-palette" size={20} color="#10b981" />
+            <Text style={styles.sectionTitle}>Appearance</Text>
+          </View>
+          
+          <View style={styles.settingItem}>
+            <View style={styles.settingItemLeft}>
+              <View style={styles.settingIconBox}>
+                <Ionicons name={isDark ? "moon" : "sunny"} size={20} color="#10b981" />
+              </View>
+              <View style={styles.settingItemText}>
+                <Text style={styles.settingItemTitle}>Dark Mode</Text>
+                <Text style={styles.settingItemSubtitle}>
+                  {isDark ? 'Dark theme enabled' : 'Light theme enabled'}
+                </Text>
+              </View>
+            </View>
+            <Switch
+              value={isDark}
+              onValueChange={toggleTheme}
+              trackColor={{ false: '#d1d5db', true: '#10b981' }}
+              thumbColor={isDark ? '#fff' : '#f3f4f6'}
+            />
+          </View>
+        </View>
+
+        {/* About Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <Ionicons name="information-circle" size={20} color="#10b981" />
+            <Text style={styles.sectionTitle}>About</Text>
+          </View>
+          
+          <View style={styles.aboutCard}>
+            <Text style={styles.aboutTitle}>U-EventTrack</Text>
+            <Text style={styles.aboutDescription}>
+              Digital attendance system for Mindoro State University, Bongabong Campus USG events.
+            </Text>
+            <View style={styles.aboutFeatures}>
+              <View style={styles.aboutFeatureItem}>
+                <Ionicons name="checkmark-circle" size={16} color="#10b981" />
+                <Text style={styles.aboutFeatureText}>Face Recognition</Text>
+              </View>
+              <View style={styles.aboutFeatureItem}>
+                <Ionicons name="qr-code" size={16} color="#10b981" />
+                <Text style={styles.aboutFeatureText}>QR Code Scanning</Text>
+              </View>
+              <View style={styles.aboutFeatureItem}>
+                <Ionicons name="location" size={16} color="#10b981" />
+                <Text style={styles.aboutFeatureText}>GPS Verification</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.settingsFooter}>
+          <Text style={styles.settingsFooterText}>
+            © {new Date().getFullYear()} MinSU Bongabong Campus
           </Text>
-          <View style={styles.aboutFeatures}>
-            <View style={styles.aboutFeatureItem}>
-              <Ionicons name="checkmark-circle" size={16} color="#10b981" />
-              <Text style={styles.aboutFeatureText}>Face Recognition</Text>
-            </View>
-            <View style={styles.aboutFeatureItem}>
-              <Ionicons name="qr-code" size={16} color="#10b981" />
-              <Text style={styles.aboutFeatureText}>QR Code Scanning</Text>
-            </View>
-            <View style={styles.aboutFeatureItem}>
-              <Ionicons name="location" size={16} color="#10b981" />
-              <Text style={styles.aboutFeatureText}>GPS Verification</Text>
-            </View>
-          </View>
         </View>
       </View>
 
-      <View style={styles.settingsFooter}>
-        <Text style={styles.settingsFooterText}>
-          © {new Date().getFullYear()} MinSU Bongabong Campus
-        </Text>
-      </View>
-    </View>
+      {/* Face Enrollment Modal */}
+      <Modal
+        visible={showFaceEnrollment}
+        animationType="slide"
+        onRequestClose={() => setShowFaceEnrollment(false)}
+      >
+        <FaceEnrollment
+          visible={showFaceEnrollment}
+          onClose={() => setShowFaceEnrollment(false)}
+          token={token}
+          studentId={student?.id}
+          onSuccess={onFaceEnrolled}
+        />
+      </Modal>
+    </>
   );
 }
 
@@ -886,7 +1023,7 @@ export default function App() {
           {activeTab === 'dashboard' && <DashboardTab dashboardData={dashboardData} greeting={greeting} attendanceRate={attendanceRate} streak={streak} nextEvent={nextEvent} recentCheckins={recentCheckins} formatDate={formatDate} formatTime={formatTime} styles={styles} />}
           {activeTab === 'events' && <EventsTab dashboardData={dashboardData} formatDate={formatDate} formatTime={formatTime} onEventPress={handleEventPress} styles={styles} />}
           {activeTab === 'attendance' && <AttendanceTab dashboardData={dashboardData} formatDate={formatDate} formatTime={formatTime} styles={styles} />}
-          {activeTab === 'settings' && <SettingsTab user={user} dashboardData={dashboardData} styles={styles} />}
+          {activeTab === 'settings' && <SettingsTab user={user} dashboardData={dashboardData} token={token} onFaceEnrolled={fetchDashboard} styles={styles} />}
         </ScrollView>
 
         {/* Bottom Tab Navigation */}

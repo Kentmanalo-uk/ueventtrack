@@ -14,23 +14,23 @@ const ANNOUNCEMENT_SLIDES = [
   {
     id: 1,
     image: '/announcements/slide1.png',
-    title: 'Campus Leadership Summit 2026',
-    description: 'Join us for the annual leadership summit on April 5, 2026',
-    tag: 'Event'
+    title: 'University Student Government',
+    description: 'Mindoro State University - Bongabong Campus official student organization serving the student body',
+    tag: 'About USG'
   },
   {
     id: 2,
     image: '/announcements/slide2.png',
-    title: 'Face Enrollment Now Open',
-    description: 'Register your biometric data for contactless attendance',
-    tag: 'Update'
+    title: 'Student Leadership & Advocacy',
+    description: 'Empowering students through programs, events, and initiatives for academic excellence and community development',
+    tag: 'Our Mission'
   },
   {
     id: 3,
     image: '/announcements/slide3.png',
-    title: 'U-EventTrack v2 Launch',
-    description: 'Experience our brand new attendance tracking system',
-    tag: 'Info'
+    title: 'Join USG Events',
+    description: 'Participate in campus activities, seminars, and community programs organized by your student government',
+    tag: 'Get Involved'
   },
 ];
 
@@ -86,18 +86,18 @@ export default function HomePage() {
       `}</style>
 
       {/* Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl border-b border-gray-200/50 dark:border-gray-700/50">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-green-500 via-emerald-500 to-teal-600 p-[2px] shadow-lg">
-                <div className="w-full h-full rounded-2xl bg-white dark:bg-gray-900 flex items-center justify-center overflow-hidden p-0.5">
-                  <img src="/usg-logo.png" alt="USG" className="w-full h-full object-cover rounded-xl" />
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-green-600 via-green-300 to-white dark:from-green-800 dark:via-green-700 dark:to-gray-900 backdrop-blur-xl border-b border-green-200/50 dark:border-green-700/50 shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 lg:px-6">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-green-500 via-emerald-500 to-teal-600 p-[2px] shadow-lg">
+                <div className="w-full h-full rounded-xl bg-white dark:bg-gray-900 flex items-center justify-center overflow-hidden p-0.5">
+                  <img src="/usg-logo.png" alt="USG" className="w-full h-full object-cover rounded-lg" />
                 </div>
               </div>
               <div>
-                <div className="font-bold text-lg text-gray-900 dark:text-white tracking-tight">U-EventTrack</div>
-                <div className="text-[10px] text-gray-500 dark:text-gray-400 font-medium tracking-wide">MinSU BONGABONG</div>
+                <div className="font-bold text-base text-gray-900 dark:text-white tracking-tight">U-EventTrack</div>
+                <div className="text-[9px] text-gray-700 dark:text-gray-400 font-medium tracking-wide">MinSU BONGABONG</div>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -105,16 +105,16 @@ export default function HomePage() {
                 href="https://expo.dev/artifacts/eas/LiIoOl9NRUujMPUkGXfZDjH0059Hw-Otypgfr6gVwt0.apk"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group px-5 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white text-sm font-bold rounded-full transition-all shadow-lg hover:shadow-xl hover:scale-105 flex items-center gap-2"
+                className="group px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white text-xs font-bold rounded-full transition-all shadow-lg hover:shadow-xl hover:scale-105 flex items-center gap-2"
               >
-                <Smartphone className="w-4 h-4" />
+                <Smartphone className="w-3.5 h-3.5" />
                 Download App
               </a>
               <button 
                 onClick={() => setLoginOpen(true)} 
-                className="group px-6 py-2.5 bg-gradient-to-r from-gray-900 to-gray-800 dark:from-white dark:to-gray-100 text-white dark:text-gray-900 text-sm font-bold rounded-full hover:from-gray-800 hover:to-gray-700 dark:hover:from-gray-100 dark:hover:to-white transition-all shadow-lg hover:shadow-xl hover:scale-105 flex items-center gap-2"
+                className="group px-5 py-2 bg-gradient-to-r from-gray-900 to-gray-800 dark:from-white dark:to-gray-100 text-white dark:text-gray-900 text-xs font-bold rounded-full hover:from-gray-800 hover:to-gray-700 dark:hover:from-gray-100 dark:hover:to-white transition-all shadow-lg hover:shadow-xl hover:scale-105 flex items-center gap-2"
               >
-                <LogIn className="w-4 h-4" />
+                <LogIn className="w-3.5 h-3.5" />
                 Sign In
               </button>
             </div>
@@ -123,7 +123,7 @@ export default function HomePage() {
       </nav>
 
       {/* Hero Section with Logo Left and Carousel Right */}
-      <section className="pt-20 pb-6 px-4 lg:px-6 bg-white dark:bg-gray-950 relative overflow-hidden">
+      <section className="pt-24 pb-6 px-4 lg:px-6 bg-white dark:bg-gray-950 relative overflow-hidden">
         {/* Gradient Orbs */}
         <div className="absolute top-10 left-10 w-72 h-72 bg-green-400/20 dark:bg-green-400/10 rounded-full blur-3xl" />
         <div className="absolute bottom-10 right-10 w-96 h-96 bg-emerald-400/10 dark:bg-emerald-400/5 rounded-full blur-3xl" />
