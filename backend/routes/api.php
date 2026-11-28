@@ -22,6 +22,7 @@ Route::get('/announcements/public', [AnnouncementController::class, 'public']);
 // Google OAuth routes
 Route::get('/auth/google', [\App\Http\Controllers\GoogleAuthController::class, 'getGoogleAuthUrl']);
 Route::get('/auth/google/callback', [\App\Http\Controllers\GoogleAuthController::class, 'handleGoogleCallback']);
+Route::post('/auth/google', [\App\Http\Controllers\GoogleAuthController::class, 'handleMobileGoogleSignIn']);
 
 // Officer registration (public)
 Route::post('/officer/register', [\App\Http\Controllers\OfficerRegistrationController::class, 'register']);

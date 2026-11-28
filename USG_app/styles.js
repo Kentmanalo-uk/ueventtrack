@@ -60,14 +60,14 @@ export const createStyles = (colors) => StyleSheet.create({
     fontWeight: '600',
     color: '#10b981',
   },
-  // Announcement Banner
-  announcementBanner: {
-    backgroundColor: '#059669',
-    paddingVertical: 20,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(16, 185, 129, 0.4)',
-  },
+  // Old Announcement Banner (unused - for reference only)
+  // announcementBanner: {
+  //   backgroundColor: '#059669',
+  //   paddingVertical: 20,
+  //   paddingHorizontal: 16,
+  //   borderBottomWidth: 1,
+  //   borderBottomColor: 'rgba(16, 185, 129, 0.4)',
+  // },
   announcementContent: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1378,117 +1378,17 @@ export const createStyles = (colors) => StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
   },
-});
-
-// Export static styles for backward compatibility
-export const styles = createStyles({
-  background: '#f0fdf4',
-  card: '#ffffff',
-  cardSecondary: '#f9fafb',
-  text: '#111827',
-  textSecondary: '#6b7280',
-  textTertiary: '#9ca3af',
-  primary: '#10b981',
-  primaryDark: '#059669',
-  primaryLight: '#34d399',
-  success: '#10b981',
-  warning: '#f59e0b',
-  error: '#ef4444',
-  info: '#3b82f6',
-  border: '#e5e7eb',
-  borderLight: '#f3f4f6',
-  overlay: 'rgba(0, 0, 0, 0.5)',
-  shadow: 'rgba(0, 0, 0, 0.1)',
-  inputBackground: '#ffffff',
-  inputBorder: '#10b981',
-  placeholder: '#6b7280',
-
-  // Centered Login Page Styles
-  centeredLogoSection: {
-    alignItems: 'center',
-    marginBottom: 60,
-  },
-  centeredInput: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    fontSize: 15,
-    marginBottom: 12,
-  },
-  centeredPasswordContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 10,
-    marginBottom: 20,
-  },
-  centeredPasswordInput: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    fontSize: 15,
-  },
-  centeredPasswordToggle: {
-    paddingHorizontal: 16,
-  },
-  centeredLoginButton: {
-    backgroundColor: '#10b981',
-    borderRadius: 25,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginBottom: 28,
-  },
-  centeredLoginButtonText: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '600',
-  },
-  centeredForgotPassword: {
-    alignItems: 'center',
-    marginBottom: 80,
-  },
-  centeredForgotPasswordText: {
-    fontSize: 15,
-  },
-  centeredRegisterSection: {
-    width: '100%',
-    alignItems: 'center',
-    paddingTop: 0,
-    borderTopWidth: 0,
-  },
-  centeredRegisterButton: {
-    borderWidth: 1,
-    borderRadius: 25,
-    paddingVertical: 12,
-    paddingHorizontal: 32,
-    width: '100%',
-    alignItems: 'center',
-  },
-  centeredRegisterButtonText: {
-    color: '#10b981',
-    fontSize: 15,
-    fontWeight: '500',
-  },
-  centeredFooter: {
-    marginTop: 32,
-    alignItems: 'center',
-    paddingVertical: 16,
-  },
-  centeredFooterText: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-
-  // Carousel Styles
   carouselContainer: {
     marginBottom: 16,
-    marginTop: 0,
-    height: 160,
+    marginHorizontal: 16,
   },
   carouselSlide: {
     width: '100%',
     height: 160,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#10b981',
+    overflow: 'hidden',
     backgroundColor: '#000',
   },
   carouselImage: {
@@ -1513,8 +1413,92 @@ export const styles = createStyles({
     height: 6,
     backgroundColor: '#10b981',
   },
-});
-
+  // Announcement Banner Styles (shows upcoming events)
+  announcementBanner: {
+    marginBottom: 16,
+    marginHorizontal: -8,
+  },
+  announcementScrollContainer: {
+    paddingLeft: 8,
+    paddingRight: 0,
+  },
+  announcementHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 8,
+    marginHorizontal: 8,
+  },
+  announcementHeaderText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  announcementCard: {
+    backgroundColor: colors.card,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#10b981',
+    padding: 20,
+    marginRight: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  announcementCardHeader: {
+    marginBottom: 12,
+  },
+  announcementBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  announcementBadgeText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  announcementTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: 16,
+    lineHeight: 26,
+  },
+  announcementDetails: {
+    gap: 10,
+  },
+  announcementDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  announcementDetailText: {
+    fontSize: 15,
+    color: colors.textSecondary,
+    flex: 1,
+  },
+  announcementDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  announcementDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#d1d5db',
+    marginHorizontal: 3,
+  },
+  announcementDotActive: {
+    width: 20,
+    height: 6,
+    backgroundColor: '#10b981',
+  },
   // Face Enrollment Button
   enrollButton: {
     flexDirection: 'row',
@@ -1533,3 +1517,129 @@ export const styles = createStyles({
     fontSize: 14,
     fontWeight: '600',
   },
+  // Landing Page Styles
+  landingTopActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 40,
+  },
+  landingLogInButton: {
+    backgroundColor: '#E8F5E9',
+    borderRadius: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  landingLogInButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#000',
+  },
+  landingCloseButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  landingHero: {
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    marginBottom: 60,
+  },
+  landingTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#1a5f4a',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  landingSubtitle: {
+    fontSize: 15,
+    color: '#4a5568',
+    marginBottom: 50,
+    textAlign: 'center',
+  },
+  landingIllustration: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 200,
+  },
+  landingActions: {
+    paddingHorizontal: 24,
+    marginBottom: 40,
+  },
+  landingGoogleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 25,
+    paddingVertical: 16,
+    marginBottom: 12,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  landingGoogleButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+  },
+  landingEmailButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 25,
+    paddingVertical: 16,
+    marginBottom: 20,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  landingEmailButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+  },
+  landingFooterText: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  landingFooterLabel: {
+    fontSize: 15,
+    color: '#4a5568',
+  },
+  landingFooterLink: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#10b981',
+  },
+  landingTroubleText: {
+    fontSize: 15,
+    color: '#10b981',
+    fontWeight: '500',
+  },
+  landingFooter: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    paddingHorizontal: 24,
+  },
+  landingFooterTerms: {
+    fontSize: 13,
+    color: '#6b7280',
+    textAlign: 'center',
+  },
+
+});

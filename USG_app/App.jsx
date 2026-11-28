@@ -7,6 +7,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
+import * as WebBrowser from 'expo-web-browser';
+import * as AuthSession from 'expo-auth-session';
 import { createStyles } from './styles';
 import EventDetailsModal from './src/components/EventDetailsModal';
 import BarcodeScanner from './src/components/BarcodeScanner';
@@ -14,6 +16,8 @@ import FaceEnrollment from './src/components/FaceEnrollment';
 import { useTheme } from './src/context/ThemeContext';
 
 const API_URL = 'https://ueventtrack.online/api';
+
+WebBrowser.maybeCompleteAuthSession();
 
 // Configure axios timeout
 axios.defaults.timeout = 10000; // 10 seconds timeout
@@ -45,9 +49,31 @@ const FALLBACK_ANNOUNCEMENTS = [
 // Dashboard Tab Component
 function DashboardTab({ dashboardData, greeting, attendanceRate, streak, nextEvent, recentCheckins, formatDate, formatTime, styles }) {
   const [carouselIndex, setCarouselIndex] = useState(0);
+  const [announcementIndex, setAnnouncementIndex] = useState(0);
   const scrollViewRef = React.useRef(null);
+  const announcementScrollRef = React.useRef(null);
   const { width: screenWidth } = require('react-native').Dimensions.get('window');
-  const slideWidth = screenWidth; // Full screen width
+  const slideWidth = screenWidth - 32; // Match attendance card width (16px margin on each side)
+  const announcementCardMargin = 16; // Margin between cards (marginRight on card)
+  const announcementCardWidth = screenWidth - 48; // Card width: screen - dashboard padding (40px) + banner margin (16px) - scroll padding (8px) - card margin (16px)
+  const announcementSnapWidth = announcementCardWidth + announcementCardMargin; // Total width for snapping (card + margin)
+
+  // Auto-advance announcements carousel
+  useEffect(() => {
+    if (dashboardData?.upcomingEvents && dashboardData.upcomingEvents.length > 1) {
+      const interval = setInterval(() => {
+        const nextIndex = (announcementIndex + 1) % dashboardData.upcomingEvents.length;
+        setAnnouncementIndex(nextIndex);
+        if (announcementScrollRef.current) {
+          announcementScrollRef.current.scrollTo({ 
+            x: nextIndex * announcementSnapWidth, 
+            animated: true 
+          });
+        }
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [announcementIndex, announcementSnapWidth, dashboardData?.upcomingEvents]);
 
   // Auto-advance carousel
   useEffect(() => {
@@ -66,59 +92,85 @@ function DashboardTab({ dashboardData, greeting, attendanceRate, streak, nextEve
 
   return (
     <>
-      {/* Announcement Carousel */}
-      <View style={styles.carouselContainer}>
-        <ScrollView
-          ref={scrollViewRef}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          decelerationRate="fast"
-          snapToInterval={slideWidth}
-          snapToAlignment="center"
-          contentContainerStyle={{ paddingBottom: 0 }}
-          onMomentumScrollEnd={(event) => {
-            const index = Math.round(event.nativeEvent.contentOffset.x / slideWidth);
-            setCarouselIndex(index);
-          }}
-        >
-          {ANNOUNCEMENT_SLIDES.map((slide) => (
-            <View key={slide.id} style={[styles.carouselSlide, { width: slideWidth }]}>
-              <Image
-                source={slide.image}
-                style={styles.carouselImage}
-                resizeMode="cover"
-              />
+      {/* Announcements Banner - Shows upcoming events */}
+      {dashboardData?.upcomingEvents && dashboardData.upcomingEvents.length > 0 && (
+        <View style={styles.announcementBanner}>
+          <View style={styles.announcementHeader}>
+            <Ionicons name="megaphone" size={20} color="#10b981" />
+            <Text style={styles.announcementHeaderText}>Upcoming Events</Text>
+          </View>
+          <ScrollView
+            ref={announcementScrollRef}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            pagingEnabled
+            snapToInterval={announcementSnapWidth}
+            snapToAlignment="start"
+            decelerationRate="fast"
+            contentContainerStyle={styles.announcementScrollContainer}
+            onMomentumScrollEnd={(event) => {
+              const index = Math.round(event.nativeEvent.contentOffset.x / announcementSnapWidth);
+              setAnnouncementIndex(index);
+            }}
+          >
+            {dashboardData.upcomingEvents.map((event) => (
+              <View key={event.id} style={[styles.announcementCard, { width: announcementCardWidth }]}>
+                <View style={styles.announcementCardHeader}>
+                  <View style={[
+                    styles.announcementBadge,
+                    { backgroundColor: event.status === 'ongoing' ? '#dcfce7' : '#dbeafe' }
+                  ]}>
+                    <Text style={[
+                      styles.announcementBadgeText,
+                      { color: event.status === 'ongoing' ? '#16a34a' : '#2563eb' }
+                    ]}>
+                      {event.status.toUpperCase()}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={styles.announcementTitle} numberOfLines={2}>
+                  {event.event_name}
+                </Text>
+                <View style={styles.announcementDetails}>
+                  <View style={styles.announcementDetailRow}>
+                    <Ionicons name="calendar-outline" size={16} color="#6b7280" />
+                    <Text style={styles.announcementDetailText}>
+                      {formatDate(event.event_date)}
+                    </Text>
+                  </View>
+                  <View style={styles.announcementDetailRow}>
+                    <Ionicons name="time-outline" size={16} color="#6b7280" />
+                    <Text style={styles.announcementDetailText}>
+                      {formatTime(event.start_time)}
+                    </Text>
+                  </View>
+                  {event.venue && (
+                    <View style={styles.announcementDetailRow}>
+                      <Ionicons name="location-outline" size={16} color="#6b7280" />
+                      <Text style={styles.announcementDetailText} numberOfLines={1}>
+                        {event.venue}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            ))}
+          </ScrollView>
+          
+          {/* Dots Indicator - Only show if multiple events */}
+          {dashboardData.upcomingEvents.length > 1 && (
+            <View style={styles.announcementDots}>
+              {dashboardData.upcomingEvents.map((_, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.announcementDot,
+                    index === announcementIndex && styles.announcementDotActive,
+                  ]}
+                />
+              ))}
             </View>
-          ))}
-        </ScrollView>
-        {/* Dots Indicator */}
-        <View style={styles.carouselDots}>
-          {ANNOUNCEMENT_SLIDES.map((_, index) => (
-            <View
-              key={index}
-              style={[
-                styles.carouselDot,
-                index === carouselIndex && styles.carouselDotActive,
-              ]}
-            />
-          ))}
-        </View>
-      </View>
-
-      {/* Next Event Banner */}
-      {nextEvent && (
-        <View style={styles.nextEventBanner}>
-          <View style={styles.nextEventIconBox}>
-            <Ionicons name="notifications" size={20} color="#fff" />
-          </View>
-          <View style={styles.nextEventInfo}>
-            <Text style={styles.nextEventLabel}>Next Upcoming Event</Text>
-            <Text style={styles.nextEventName}>{nextEvent.event_name}</Text>
-            <Text style={styles.nextEventDetails}>
-              {formatDate(nextEvent.event_date)} • {formatTime(nextEvent.start_time)}–{formatTime(nextEvent.end_time)}
-            </Text>
-          </View>
+          )}
         </View>
       )}
 
@@ -184,31 +236,6 @@ function DashboardTab({ dashboardData, greeting, attendanceRate, streak, nextEve
           ))
         ) : (
           <Text style={styles.emptyText}>No check-ins yet</Text>
-        )}
-      </View>
-
-      {/* Upcoming Events */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeaderRow}>
-          <Ionicons name="calendar" size={20} color="#10b981" />
-          <Text style={styles.sectionTitle}>Upcoming Events</Text>
-        </View>
-        {dashboardData.upcomingEvents.map(e => (
-          <View key={e.id} style={styles.eventItem}>
-            <View style={styles.eventIconBox}>
-              <Ionicons name="calendar-outline" size={20} color="#10b981" />
-            </View>
-            <View style={styles.eventInfo}>
-              <Text style={styles.eventName}>{e.event_name}</Text>
-              <Text style={styles.eventDetails}>{formatDate(e.event_date)} • {e.venue}</Text>
-            </View>
-            <View style={styles.eventBadge}>
-              <Text style={styles.eventBadgeText}>{e.status}</Text>
-            </View>
-          </View>
-        ))}
-        {dashboardData.upcomingEvents.length === 0 && (
-          <Text style={styles.emptyText}>No upcoming events</Text>
         )}
       </View>
     </>
@@ -616,6 +643,75 @@ export default function App() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
+  // Google OAuth configuration
+  const discovery = AuthSession.useAutoDiscovery('https://accounts.google.com');
+  const redirectUri = AuthSession.makeRedirectUri({
+    scheme: 'com.emnl2004.USG_app',
+    path: 'redirect'
+  });
+
+  const [request, response, promptAsync] = AuthSession.useAuthRequest(
+    {
+      clientId: '698527452653-b6vnphcdkl4vaj0sftfk6uivlrj1vqd4.apps.googleusercontent.com',
+      scopes: ['openid', 'profile', 'email'],
+      redirectUri,
+    },
+    discovery
+  );
+
+  // Handle Google Sign-In response
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const { authentication } = response;
+      handleGoogleSignInSuccess(authentication.accessToken, authentication.idToken);
+    }
+  }, [response]);
+
+  const handleGoogleSignInSuccess = async (accessToken, idToken) => {
+    try {
+      setLoading(true);
+      
+      // Get user info from Google
+      const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const userInfo = await userInfoResponse.json();
+
+      // Send to backend for authentication
+      const response = await axios.post(`${API_URL}/auth/google`, {
+        idToken,
+        email: userInfo.email,
+        name: userInfo.name,
+        googleId: userInfo.sub,
+      });
+
+      if (response.data.success) {
+        const { token: authToken, user: userData } = response.data;
+        setToken(authToken);
+        setUser(userData);
+        await AsyncStorage.setItem('token', authToken);
+        await AsyncStorage.setItem('user', JSON.stringify(userData));
+        Alert.alert('Success', `Welcome, ${userData.name}!`);
+      } else {
+        Alert.alert('Error', response.data.message || 'Google Sign-In failed');
+      }
+    } catch (error) {
+      console.log('Google Sign-In error:', error);
+      Alert.alert('Error', 'Failed to sign in with Google. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      await promptAsync();
+    } catch (error) {
+      console.log('Google Sign-In error:', error);
+      Alert.alert('Error', 'Failed to initiate Google Sign-In');
+    }
+  };
 
   const fetchPublicData = async () => {
     try {
@@ -1114,152 +1210,127 @@ export default function App() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={styles.container}>
       <StatusBar 
-        style={isDark ? "light" : "dark"}
+        style="dark"
         backgroundColor="transparent"
         translucent={false}
       />
 
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1, backgroundColor: colors.background }}
+        style={{ flex: 1 }}
       >
-        <ScrollView 
-          contentContainerStyle={{ 
-            flexGrow: 1, 
-            justifyContent: 'center',
-            paddingHorizontal: 24,
-            paddingVertical: 60,
-          }}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
+        <LinearGradient
+          colors={['#D7F5DC', '#E8F5E9', '#F0FDF4']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{ flex: 1 }}
         >
-          {/* Logo Section */}
-          <View style={{ alignItems: 'center', marginBottom: 100 }}>
-            <View style={{
-              width: 90,
-              height: 90,
-              borderRadius: 45,
-              backgroundColor: '#ffffff',
-              justifyContent: 'center',
-              alignItems: 'center',
-              overflow: 'hidden',
-              borderWidth: 3,
-              borderColor: '#10b981',
-            }}>
-              <Image 
-                source={require('./assets/usg-logo.png')} 
-                style={{ width: '100%', height: '100%' }}
-                resizeMode="cover"
-              />
-            </View>
-          </View>
-
-          {/* Login Form */}
-          <View style={{ width: '100%' }}>
-            <TextInput
-              style={{ 
-                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.15)' : '#f0f2f5',
-                borderWidth: 1.5,
-                borderColor: '#10b981',
-                borderRadius: 12,
-                paddingHorizontal: 16,
-                paddingVertical: 16,
-                fontSize: 15,
-                color: colors.text,
-                marginBottom: 12,
-              }}
-              placeholder="Email address"
-              placeholderTextColor={isDark ? '#8a8d91' : '#65676b'}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-        
-            <View style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.15)' : '#f0f2f5',
-              borderWidth: 1.5,
-              borderColor: '#10b981',
-              borderRadius: 12,
-              marginBottom: 20,
-            }}>
-              <TextInput
-                style={{ 
-                  flex: 1,
-                  paddingHorizontal: 16,
-                  paddingVertical: 16,
-                  fontSize: 15,
-                  color: colors.text,
-                }}
-                placeholder="Password"
-                placeholderTextColor={isDark ? '#8a8d91' : '#65676b'}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-              />
+          <ScrollView 
+            contentContainerStyle={{ 
+              flexGrow: 1,
+              paddingTop: 60,
+            }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* Top Actions */}
+            <View style={styles.landingTopActions}>
               <TouchableOpacity 
-                onPress={() => setShowPassword(!showPassword)}
-                style={{ paddingHorizontal: 16 }}
+                style={styles.landingLogInButton}
+                onPress={() => setShowLoginModal(true)}
               >
-                <Ionicons 
-                  name={showPassword ? "eye-off" : "eye"} 
-                  size={20} 
-                  color={isDark ? '#8a8d91' : '#65676b'}
-                />
+                <Text style={styles.landingLogInButtonText}>Log in</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.landingCloseButton}>
+                <Ionicons name="close" size={24} color="#000" />
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity 
-              style={{
-                backgroundColor: '#10b981',
-                borderRadius: 25,
-                paddingVertical: 14,
-                alignItems: 'center',
-                marginBottom: 16,
-                width: '100%',
-              }}
-              onPress={handleQuickLogin}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={{ color: '#fff', fontSize: 17, fontWeight: '600' }}>Log In</Text>
-              )}
-            </TouchableOpacity>
+            {/* Hero Section */}
+            <View style={styles.landingHero}>
+              <Text style={styles.landingTitle}>Join U-EventTrack</Text>
+              <Text style={styles.landingSubtitle}>
+                Track attendance at Mindoro State University events
+              </Text>
 
-          </View>
+              {/* Illustration Placeholder */}
+              <View style={styles.landingIllustration}>
+                <View style={{
+                  width: 120,
+                  height: 120,
+                  borderRadius: 60,
+                  backgroundColor: '#ffffff',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  overflow: 'hidden',
+                  borderWidth: 4,
+                  borderColor: '#10b981',
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 12,
+                  elevation: 5,
+                }}>
+                  <Image 
+                    source={require('./assets/usg-logo.png')} 
+                    style={{ width: '100%', height: '100%' }}
+                    resizeMode="cover"
+                  />
+                </View>
+              </View>
+            </View>
 
-          {/* Register Section */}
-          <View style={{ width: '100%', alignItems: 'center', marginBottom: 50 }}>
-            <TouchableOpacity 
-              style={{
-                borderWidth: 1,
-                borderColor: '#10b981',
-                borderRadius: 25,
-                paddingVertical: 12,
-                width: '100%',
-                alignItems: 'center',
-              }}
-              onPress={() => setShowRegisterModal(true)}
-            >
-              <Text style={{ color: '#10b981', fontSize: 15, fontWeight: '500' }}>Create new account</Text>
-            </TouchableOpacity>
-          </View>
+            {/* Action Buttons */}
+            <View style={styles.landingActions}>
+              <TouchableOpacity 
+                style={styles.landingGoogleButton}
+                onPress={handleGoogleSignIn}
+                disabled={loading || !request}
+              >
+                {loading ? (
+                  <>
+                    <ActivityIndicator size="small" color="#000" />
+                    <Text style={styles.landingGoogleButtonText}>Signing in...</Text>
+                  </>
+                ) : (
+                  <>
+                    <Ionicons name="logo-google" size={20} color="#000" />
+                    <Text style={styles.landingGoogleButtonText}>Sign up with Google</Text>
+                  </>
+                )}
+              </TouchableOpacity>
 
-          {/* Forgotten Password */}
-          <TouchableOpacity style={{ alignItems: 'center', paddingBottom: 40 }}>
-            <Text style={[{ fontSize: 15 }, { color: colors.text }]}>
-              Forgotten Password?
-            </Text>
-          </TouchableOpacity>
-        </ScrollView>
+              <TouchableOpacity 
+                style={styles.landingEmailButton}
+                onPress={() => setShowRegisterModal(true)}
+              >
+                <Ionicons name="mail-outline" size={20} color="#000" />
+                <Text style={styles.landingEmailButtonText}>Continue with Email</Text>
+              </TouchableOpacity>
+
+              {/* Already have account */}
+              <View style={styles.landingFooterText}>
+                <Text style={styles.landingFooterLabel}>Already have an account? </Text>
+                <TouchableOpacity onPress={() => setShowLoginModal(true)}>
+                  <Text style={styles.landingFooterLink}>Log in</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Trouble signing in */}
+              <TouchableOpacity style={{ alignItems: 'center', marginTop: 12 }}>
+                <Text style={styles.landingTroubleText}>Trouble signing in?</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Footer */}
+            <View style={styles.landingFooter}>
+              <Text style={styles.landingFooterTerms}>By continuing, you agree to</Text>
+              <Text style={styles.landingFooterTerms}>U-EventTrack's Terms & Privacy Policy</Text>
+            </View>
+          </ScrollView>
+        </LinearGradient>
       </KeyboardAvoidingView>
 
       {/* Login Modal */}

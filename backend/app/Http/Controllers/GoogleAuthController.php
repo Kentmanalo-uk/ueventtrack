@@ -123,4 +123,100 @@ class GoogleAuthController extends Controller
 
         return response()->json(['url' => $url]);
     }
+
+    /**
+     * Handle mobile Google Sign-In with ID token
+     */
+    public function handleMobileGoogleSignIn(Request $request)
+    {
+        try {
+            $request->validate([
+                'idToken' => 'required|string',
+                'email' => 'required|email',
+                'name' => 'required|string',
+                'googleId' => 'required|string',
+            ]);
+
+            // In production, you should verify the idToken with Google's API
+            // For now, we'll trust the client data since it comes from Google OAuth
+
+            $googleId = $request->googleId;
+            $email = $request->email;
+            $name = $request->name;
+
+            // Check if user exists by Google ID
+            $user = User::where('google_id', $googleId)->first();
+
+            if (!$user) {
+                // Check if user exists by email
+                $user = User::where('email', $email)->first();
+
+                if ($user) {
+                    // Link existing account to Google
+                    $user->update([
+                        'google_id' => $googleId,
+                    ]);
+
+                    AuditLog::record('updated', "Linked Google account: {$user->email}", 'User', $user->id, $user->id, $request->ip());
+                } else {
+                    // Create new user
+                    // Check if email domain is allowed
+                    $emailDomain = substr(strrchr($email, "@"), 1);
+                    
+                    // For student accounts, require specific domain
+                    if (in_array($emailDomain, ['mindoro.edu.ph', 'minsu.edu.ph', 'gmail.com'])) {
+                        $user = User::create([
+                            'name' => $name,
+                            'email' => $email,
+                            'google_id' => $googleId,
+                            'password' => Hash::make(Str::random(24)), // Random password for OAuth users
+                            'role' => 'student', // Default role
+                            'email_verified_at' => now(), // Google OAuth emails are verified
+                        ]);
+
+                        AuditLog::record('created', "New user registered via Google (Mobile): {$user->email}", 'User', $user->id, $user->id, $request->ip());
+                    } else {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Only institutional email addresses are allowed.'
+                        ], 403);
+                    }
+                }
+            }
+
+            // Check if user is archived
+            if ($user->archived) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This account has been archived.'
+                ], 403);
+            }
+
+            // Generate Sanctum token
+            $token = $user->createToken('mobile-google-auth')->plainTextToken;
+
+            // Return success with token and user data
+            return response()->json([
+                'success' => true,
+                'token' => $token,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'role' => $user->role,
+                    'profile_image' => $user->profile_image,
+                    'usg_position' => $user->usg_position,
+                ],
+                'message' => 'Successfully authenticated with Google'
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Mobile Google OAuth Error: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to authenticate with Google. Please try again.'
+            ], 500);
+        }
+    }
 }

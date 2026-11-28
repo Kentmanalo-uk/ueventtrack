@@ -1,15 +1,21 @@
 ﻿import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useGoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 import { Mail, Lock, Eye, EyeOff, LogIn } from 'lucide-react';
+import { FcGoogle } from 'react-icons/fc';
 import Modal from './Modal';
+import axios from 'axios';
+
+const API_URL = import.meta.env.VITE_API_URL || 'https://ueventtrack.online/api';
 
 export default function LoginModal({ open, onClose }) {
   const [form, setForm] = useState({ email: '', password: '', remember: false });
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [showPw, setShowPw] = useState(false);
-  const { login } = useAuth();
+  const { login, setUser, setToken } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -26,6 +32,50 @@ export default function LoginModal({ open, onClose }) {
       setLoading(false);
     }
   };
+
+  const handleGoogleSuccess = async (tokenResponse) => {
+    setGoogleLoading(true);
+    try {
+      // Get user info from Google
+      const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+      });
+      const userInfo = await userInfoResponse.json();
+
+      // Send to backend
+      const response = await axios.post(`${API_URL}/auth/google/callback`, {
+        email: userInfo.email,
+        name: userInfo.name,
+        googleId: userInfo.sub,
+        avatar: userInfo.picture,
+      });
+
+      if (response.data.token) {
+        // Store token and user data
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+        setToken(response.data.token);
+        setUser(response.data.user);
+        
+        toast.success(`Welcome, ${response.data.user.name}!`);
+        onClose();
+        navigate(response.data.user.role === 'student' ? '/student-dashboard' : '/dashboard');
+      }
+    } catch (err) {
+      console.error('Google Sign-In error:', err);
+      toast.error(err.response?.data?.message || 'Google Sign-In failed');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const googleLogin = useGoogleLogin({
+    onSuccess: handleGoogleSuccess,
+    onError: () => {
+      toast.error('Google Sign-In was cancelled or failed');
+      setGoogleLoading(false);
+    },
+  });
 
   return (
     <Modal open={open} onClose={onClose}>
@@ -94,6 +144,38 @@ export default function LoginModal({ open, onClose }) {
               <>
                 <LogIn className="w-4 h-4" />
                 Sign In
+              </>
+            )}
+          </button>
+
+          {/* Divider */}
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t-2 border-gray-200 dark:border-gray-700"></div>
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="px-3 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 font-medium">
+                OR
+              </span>
+            </div>
+          </div>
+
+          {/* Google Sign-In Button */}
+          <button 
+            type="button"
+            onClick={() => googleLogin()}
+            disabled={googleLoading || loading}
+            className="w-full py-2.5 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all border-2 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 flex items-center justify-center gap-2 shadow-sm"
+          >
+            {googleLoading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-gray-300 dark:border-gray-600 border-t-gray-600 dark:border-t-gray-300 rounded-full animate-spin" />
+                Signing in with Google...
+              </>
+            ) : (
+              <>
+                <FcGoogle className="w-5 h-5" />
+                Sign in with Google
               </>
             )}
           </button>

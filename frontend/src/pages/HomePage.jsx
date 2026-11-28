@@ -1,7 +1,15 @@
 ﻿import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useGoogleLogin } from '@react-oauth/google';
 import { Calendar, LogIn, ArrowRight, Check, Users, Smartphone, QrCode, Eye, BarChart2, ChevronRight, Sparkles, ChevronLeft } from 'lucide-react';
+import { FcGoogle } from 'react-icons/fc';
+import { toast } from 'react-toastify';
 import LoginModal from '../components/LoginModal';
 import { getPublicAnnouncements } from '../api/announcementApi';
+import { useAuth } from '../context/AuthContext';
+import axios from 'axios';
+
+const API_URL = import.meta.env.VITE_API_URL || 'https://ueventtrack.online/api';
 
 const FALLBACK_ANNOUNCEMENTS = [
   { id: 1, tag: 'Event', text: 'Campus Leadership Summit on April 5, 2026 at the Main Gymnasium' },
@@ -39,6 +47,9 @@ export default function HomePage() {
   const [announcements, setAnnouncements] = useState(FALLBACK_ANNOUNCEMENTS);
   const [annIdx, setAnnIdx] = useState(0);
   const [carouselIndex, setCarouselIndex] = useState(0);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const { setUser, setToken } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     getPublicAnnouncements()
@@ -73,6 +84,49 @@ export default function HomePage() {
   const goToSlide = (index) => {
     setCarouselIndex(index);
   };
+
+  const handleGoogleSuccess = async (tokenResponse) => {
+    setGoogleLoading(true);
+    try {
+      // Get user info from Google
+      const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+      });
+      const userInfo = await userInfoResponse.json();
+
+      // Send to backend
+      const response = await axios.post(`${API_URL}/auth/google/callback`, {
+        email: userInfo.email,
+        name: userInfo.name,
+        googleId: userInfo.sub,
+        avatar: userInfo.picture,
+      });
+
+      if (response.data.token) {
+        // Store token and user data
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+        setToken(response.data.token);
+        setUser(response.data.user);
+        
+        toast.success(`Welcome, ${response.data.user.name}!`);
+        navigate(response.data.user.role === 'student' ? '/student-dashboard' : '/dashboard');
+      }
+    } catch (err) {
+      console.error('Google Sign-In error:', err);
+      toast.error(err.response?.data?.message || 'Google Sign-In failed');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const googleLogin = useGoogleLogin({
+    onSuccess: handleGoogleSuccess,
+    onError: () => {
+      toast.error('Google Sign-In was cancelled or failed');
+      setGoogleLoading(false);
+    },
+  });
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950">
@@ -166,9 +220,29 @@ export default function HomePage() {
                     onClick={() => setLoginOpen(true)}
                     className="group px-6 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-bold rounded-xl hover:bg-gray-800 dark:hover:bg-gray-100 transition-all shadow-xl hover:shadow-2xl hover:scale-105 flex items-center justify-center gap-2"
                   >
-                    Sign In
+                    Sign In with Email
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </button>
+                  
+                  {/* Google Sign-In Button */}
+                  <button 
+                    onClick={() => googleLogin()}
+                    disabled={googleLoading}
+                    className="group px-6 py-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm font-bold rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-all shadow-xl hover:shadow-2xl hover:scale-105 flex items-center justify-center gap-2 border-2 border-gray-200 dark:border-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {googleLoading ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-gray-300 dark:border-gray-600 border-t-gray-600 dark:border-t-gray-300 rounded-full animate-spin" />
+                        Signing in...
+                      </>
+                    ) : (
+                      <>
+                        <FcGoogle className="w-5 h-5" />
+                        Sign In with Google
+                      </>
+                    )}
+                  </button>
+
                   <div className="px-5 py-2.5 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 border border-green-200 dark:border-green-800 rounded-xl">
                     <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 text-center lg:text-left">
                       <span className="text-green-600 dark:text-green-400">Students:</span> Download the mobile app to register
@@ -401,8 +475,25 @@ export default function HomePage() {
               onClick={() => setLoginOpen(true)}
               className="group w-full sm:w-auto px-8 py-4 bg-white text-gray-900 text-lg font-bold rounded-2xl hover:bg-gray-100 transition-all shadow-2xl hover:scale-105 flex items-center justify-center gap-3"
             >
-              Sign In
+              Sign In with Email
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </button>
+            <button
+              onClick={() => googleLogin()}
+              disabled={googleLoading}
+              className="group w-full sm:w-auto px-8 py-4 bg-gray-800 hover:bg-gray-700 text-white text-lg font-bold rounded-2xl transition-all shadow-2xl hover:scale-105 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed border-2 border-gray-700"
+            >
+              {googleLoading ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-gray-400 border-t-white rounded-full animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                <>
+                  <FcGoogle className="w-6 h-6" />
+                  Sign In with Google
+                </>
+              )}
             </button>
           </div>
         </div>

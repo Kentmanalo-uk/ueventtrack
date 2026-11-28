@@ -1,5 +1,6 @@
 ﻿import { Suspense } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -32,58 +33,62 @@ import OfficerRegisterSuccessPage from './pages/OfficerRegisterSuccessPage';
 import OfficerRegistrationsPage from './pages/OfficerRegistrationsPage';
 import GoogleCallbackPage from './pages/GoogleCallbackPage';
 
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '698527452653-b6vnphcdkl4vaj0sftfk6uivlrj1vqd4.apps.googleusercontent.com';
+
 export default function App() {
   return (
-    <BrowserRouter>
-      <ThemeProvider>
-        <AuthProvider>
-          <Suspense fallback={<LoadingSpinner />}>
-            <Routes>
-              {/* Public routes */}
-              <Route path="/" element={<HomePage />} />
-              <Route path="/officer-register" element={<OfficerRegisterPage />} />
-              <Route path="/officer-register-success" element={<OfficerRegisterSuccessPage />} />
-              <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <BrowserRouter>
+        <ThemeProvider>
+          <AuthProvider>
+            <Suspense fallback={<LoadingSpinner />}>
+              <Routes>
+                {/* Public routes */}
+                <Route path="/" element={<HomePage />} />
+                <Route path="/officer-register" element={<OfficerRegisterPage />} />
+                <Route path="/officer-register-success" element={<OfficerRegisterSuccessPage />} />
+                <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
 
-              {/* Officer/Admin routes */}
-              <Route element={
-                <ProtectedRoute roles={['officer', 'admin']}>
-                  <AppLayout />
-                </ProtectedRoute>
-              }>
-                <Route path="/dashboard" element={<DashboardPage />} />
-                <Route path="/students" element={<StudentsPage />} />
-                <Route path="/events" element={<EventsPage />} />
-                <Route path="/events/:id" element={<EventViewPage />} />
-                <Route path="/events/:id/edit" element={<EventEditPage />} />
-                <Route path="/events/:id/analytics" element={<EventAnalyticsPage />} />
-                <Route path="/checkin" element={<CheckinPage />} />
-                <Route path="/face-enrollment" element={<FaceEnrollmentPage />} />
-                <Route path="/attendance" element={<AttendanceLogsPage />} />
-                <Route path="/fines" element={<FinesPage />} />
-                <Route path="/reports" element={<ReportsPage />} />
-                <Route path="/archive" element={<ArchivePage />} />
-                <Route path="/users" element={<UsersPage />} />
-                <Route path="/audit-logs" element={<AuditLogPage />} />
-                <Route path="/announcements" element={<AnnouncementsPage />} />
-                <Route path="/officer-registrations" element={<OfficerRegistrationsPage />} />
-              </Route>
+                {/* Officer/Admin routes */}
+                <Route element={
+                  <ProtectedRoute roles={['officer', 'admin']}>
+                    <AppLayout />
+                  </ProtectedRoute>
+                }>
+                  <Route path="/dashboard" element={<DashboardPage />} />
+                  <Route path="/students" element={<StudentsPage />} />
+                  <Route path="/events" element={<EventsPage />} />
+                  <Route path="/events/:id" element={<EventViewPage />} />
+                  <Route path="/events/:id/edit" element={<EventEditPage />} />
+                  <Route path="/events/:id/analytics" element={<EventAnalyticsPage />} />
+                  <Route path="/checkin" element={<CheckinPage />} />
+                  <Route path="/face-enrollment" element={<FaceEnrollmentPage />} />
+                  <Route path="/attendance" element={<AttendanceLogsPage />} />
+                  <Route path="/fines" element={<FinesPage />} />
+                  <Route path="/reports" element={<ReportsPage />} />
+                  <Route path="/archive" element={<ArchivePage />} />
+                  <Route path="/users" element={<UsersPage />} />
+                  <Route path="/audit-logs" element={<AuditLogPage />} />
+                  <Route path="/announcements" element={<AnnouncementsPage />} />
+                  <Route path="/officer-registrations" element={<OfficerRegistrationsPage />} />
+                </Route>
 
-              {/* Student routes */}
-              <Route element={
-                <ProtectedRoute roles={['student']}>
-                  <AppLayout />
-                </ProtectedRoute>
-              }>
-                <Route path="/student-dashboard" element={<StudentDashboardPage />} />
-                <Route path="/student-attendance" element={<StudentAttendancePage />} />
-                <Route path="/student-events" element={<StudentEventsPage />} />
+                {/* Student routes */}
+                <Route element={
+                  <ProtectedRoute roles={['student']}>
+                    <AppLayout />
+                  </ProtectedRoute>
+                }>
+                  <Route path="/student-dashboard" element={<StudentDashboardPage />} />
+                  <Route path="/student-attendance" element={<StudentAttendancePage />} />
+                  <Route path="/student-events" element={<StudentEventsPage />} />
               </Route>
             </Routes>
           </Suspense>
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>
+  </GoogleOAuthProvider>
   );
 }
 

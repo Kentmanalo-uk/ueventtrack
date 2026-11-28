@@ -50,6 +50,7 @@
       "usesCleartextTraffic": true,
       "networkSecurityConfig": "./android/app/src/main/res/xml/network_security_config.xml"
     },
+    "scheme": "com.emnl2004.USG_app",
     "web": {
       "favicon": "./assets/favicon.png"
     },

@@ -36,11 +36,13 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider value={{
       user,
+      setUser,
       role: user?.role,
       loading,
       login: loginFn,
       logout: logoutFn,
       fetchUser,
+      setToken: (token) => localStorage.setItem('token', token),
     }}>
       {children}
     </AuthContext.Provider>
