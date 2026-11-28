@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect } from 'react';
-import { Calendar, LogIn, ArrowRight, Check, Users, Smartphone, QrCode, Eye, BarChart2, ChevronRight, Sparkles } from 'lucide-react';
+import { Calendar, LogIn, ArrowRight, Check, Users, Smartphone, QrCode, Eye, BarChart2, ChevronRight, Sparkles, ChevronLeft } from 'lucide-react';
 import LoginModal from '../components/LoginModal';
 import { getPublicAnnouncements } from '../api/announcementApi';
 
@@ -9,10 +9,36 @@ const FALLBACK_ANNOUNCEMENTS = [
   { id: 3, tag: 'Info', text: 'U-EventTrack v2 is live! Enjoy all new features' },
 ];
 
+// Announcement carousel images - Add your images to public/announcements folder
+const ANNOUNCEMENT_SLIDES = [
+  {
+    id: 1,
+    image: '/announcements/slide1.png',
+    title: 'Campus Leadership Summit 2026',
+    description: 'Join us for the annual leadership summit on April 5, 2026',
+    tag: 'Event'
+  },
+  {
+    id: 2,
+    image: '/announcements/slide2.png',
+    title: 'Face Enrollment Now Open',
+    description: 'Register your biometric data for contactless attendance',
+    tag: 'Update'
+  },
+  {
+    id: 3,
+    image: '/announcements/slide3.png',
+    title: 'U-EventTrack v2 Launch',
+    description: 'Experience our brand new attendance tracking system',
+    tag: 'Info'
+  },
+];
+
 export default function HomePage() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [announcements, setAnnouncements] = useState(FALLBACK_ANNOUNCEMENTS);
   const [annIdx, setAnnIdx] = useState(0);
+  const [carouselIndex, setCarouselIndex] = useState(0);
 
   useEffect(() => {
     getPublicAnnouncements()
@@ -27,6 +53,26 @@ export default function HomePage() {
     }, 4000);
     return () => clearInterval(interval);
   }, [announcements]);
+
+  // Auto-advance carousel
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCarouselIndex(i => (i + 1) % ANNOUNCEMENT_SLIDES.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const nextSlide = () => {
+    setCarouselIndex((carouselIndex + 1) % ANNOUNCEMENT_SLIDES.length);
+  };
+
+  const prevSlide = () => {
+    setCarouselIndex((carouselIndex - 1 + ANNOUNCEMENT_SLIDES.length) % ANNOUNCEMENT_SLIDES.length);
+  };
+
+  const goToSlide = (index) => {
+    setCarouselIndex(index);
+  };
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950">
@@ -55,6 +101,14 @@ export default function HomePage() {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <a 
+                href="/downloads/UEventTrack.apk"
+                download
+                className="group px-5 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white text-sm font-bold rounded-full transition-all shadow-lg hover:shadow-xl hover:scale-105 flex items-center gap-2"
+              >
+                <Smartphone className="w-4 h-4" />
+                Download App
+              </a>
               <button 
                 onClick={() => setLoginOpen(true)} 
                 className="group px-6 py-2.5 bg-gradient-to-r from-gray-900 to-gray-800 dark:from-white dark:to-gray-100 text-white dark:text-gray-900 text-sm font-bold rounded-full hover:from-gray-800 hover:to-gray-700 dark:hover:from-gray-100 dark:hover:to-white transition-all shadow-lg hover:shadow-xl hover:scale-105 flex items-center gap-2"
@@ -67,86 +121,147 @@ export default function HomePage() {
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <section className="pt-32 pb-20 px-6 lg:px-8 relative overflow-hidden">
+      {/* Hero Section with Logo Left and Carousel Right */}
+      <section className="pt-20 pb-6 px-4 lg:px-6 bg-white dark:bg-gray-950 relative overflow-hidden">
         {/* Gradient Orbs */}
-        <div className="absolute top-20 left-10 w-72 h-72 bg-green-400/20 dark:bg-green-400/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-emerald-400/10 dark:bg-emerald-400/5 rounded-full blur-3xl" />
+        <div className="absolute top-10 left-10 w-72 h-72 bg-green-400/20 dark:bg-green-400/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-10 right-10 w-96 h-96 bg-emerald-400/10 dark:bg-emerald-400/5 rounded-full blur-3xl" />
         
-        <div className="max-w-7xl mx-auto relative">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            {/* Left Content */}
-            <div className="space-y-8">
-              {/* Badge */}
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/50 dark:to-emerald-950/50 border border-green-200/60 dark:border-green-700/60 rounded-full">
-                <Sparkles className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
-                <span className="text-xs font-bold text-green-700 dark:text-green-300 tracking-wide">SMART ATTENDANCE SYSTEM</span>
-              </div>
-
-              {/* Headline */}
-              <h1 className="font-display text-6xl sm:text-7xl lg:text-8xl font-semibold text-gray-900 dark:text-white leading-[0.95] tracking-tight">
-                <span className="bg-gradient-to-r from-green-600 via-emerald-500 to-teal-600 dark:from-green-400 dark:via-emerald-400 dark:to-teal-400 bg-clip-text text-transparent">
-                  USG Attendance
-                </span>
-              </h1>
-
-              {/* Subheading */}
-              <p className="text-xl text-gray-600 dark:text-gray-300 leading-relaxed max-w-lg font-medium">
-                The modern way to track student attendance at campus events with{' '}
-                <span className="text-gray-900 dark:text-white font-semibold">barcode scanning</span>,{' '}
-                <span className="text-gray-900 dark:text-white font-semibold">facial recognition</span>, and{' '}
-                <span className="text-gray-900 dark:text-white font-semibold">real-time analytics</span>.
-              </p>
-
-              {/* CTA Buttons */}
-              <div className="flex flex-col sm:flex-row items-start gap-4 pt-2">
-                <button 
-                  onClick={() => setLoginOpen(true)}
-                  className="group px-8 py-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-base font-bold rounded-2xl hover:bg-gray-800 dark:hover:bg-gray-100 transition-all shadow-2xl shadow-gray-900/20 dark:shadow-white/20 hover:shadow-gray-900/40 dark:hover:shadow-white/40 hover:scale-105 flex items-center gap-3"
-                >
-                  Sign In
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </button>
-                <div className="px-8 py-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 border border-green-200 dark:border-green-800 rounded-2xl">
-                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                    <span className="text-green-600 dark:text-green-400">Students:</span> Download the mobile app to register
-                  </p>
-                </div>
-              </div>
-
-              {/* Trust Indicators */}
-              <div className="flex flex-wrap items-center gap-6 pt-4">
-                {[
-                  { icon: <Check className="w-4 h-4" />, text: 'Real-time Tracking' },
-                  { icon: <Check className="w-4 h-4" />, text: '3 Check-in Methods' },
-                  { icon: <Check className="w-4 h-4" />, text: 'Mobile Ready' },
-                ].map((item, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400 flex items-center justify-center">
-                      {item.icon}
-                    </div>
-                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{item.text}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Right - Logo Display */}
-            <div className="hidden lg:flex justify-center items-center">
-              <div className="w-[380px] h-[380px] rounded-full bg-gradient-to-br from-green-600 via-emerald-600 to-teal-700 p-2 shadow-xl">
-                <div className="w-full h-full rounded-full bg-white dark:bg-gray-900 flex items-center justify-center overflow-hidden">
+        <div className="max-w-[1400px] mx-auto relative">
+          <div className="grid lg:grid-cols-[auto_1fr] gap-8 items-center">
+            {/* Left Side - Logo and Content */}
+            <div className="flex flex-col items-center lg:items-start space-y-6 max-w-[450px]">
+              {/* Logo Display - Smaller */}
+              <div className="w-[220px] h-[220px] lg:w-[260px] lg:h-[260px] rounded-full bg-gradient-to-br from-green-600 via-emerald-600 to-teal-700 p-2.5 shadow-2xl">
+                <div className="w-full h-full rounded-full bg-white dark:bg-gray-900 flex items-center justify-center overflow-hidden p-5">
                   <img 
                     src="/usg-logo.png" 
                     alt="USG Logo" 
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain"
                   />
+                </div>
+              </div>
+
+              {/* Content Below Logo */}
+              <div className="text-center lg:text-left space-y-4 w-full">
+                {/* Badge */}
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/50 dark:to-emerald-950/50 border border-green-200/60 dark:border-green-700/60 rounded-full">
+                  <Sparkles className="w-3 h-3 text-green-600 dark:text-green-400" />
+                  <span className="text-[10px] font-bold text-green-700 dark:text-green-300 tracking-wide uppercase">Smart Attendance System</span>
+                </div>
+
+                {/* Headline */}
+                <h1 className="font-display text-4xl lg:text-5xl font-semibold text-gray-900 dark:text-white leading-tight tracking-tight">
+                  <span className="bg-gradient-to-r from-green-600 via-emerald-500 to-teal-600 dark:from-green-400 dark:via-emerald-400 dark:to-teal-400 bg-clip-text text-transparent">
+                    USG Attendance
+                  </span>
+                </h1>
+
+                {/* Subheading */}
+                <p className="text-sm lg:text-base text-gray-600 dark:text-gray-300 leading-relaxed font-medium">
+                  The modern way to track student attendance at campus events with{' '}
+                  <span className="text-gray-900 dark:text-white font-semibold">barcode scanning</span>,{' '}
+                  <span className="text-gray-900 dark:text-white font-semibold">facial recognition</span>, and{' '}
+                  <span className="text-gray-900 dark:text-white font-semibold">real-time analytics</span>.
+                </p>
+
+                {/* CTA Buttons */}
+                <div className="flex flex-col gap-3">
+                  <button 
+                    onClick={() => setLoginOpen(true)}
+                    className="group px-6 py-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-bold rounded-xl hover:bg-gray-800 dark:hover:bg-gray-100 transition-all shadow-xl hover:shadow-2xl hover:scale-105 flex items-center justify-center gap-2"
+                  >
+                    Sign In
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </button>
+                  <div className="px-5 py-2.5 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 border border-green-200 dark:border-green-800 rounded-xl">
+                    <p className="text-xs font-semibold text-gray-700 dark:text-gray-300 text-center lg:text-left">
+                      <span className="text-green-600 dark:text-green-400">Students:</span> Download the mobile app to register
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Side - Carousel (2048x1152 aspect ratio = 16:9) */}
+            <div className="w-full">
+              <div className="relative w-full">
+                {/* Main Carousel Container */}
+                <div className="relative overflow-hidden rounded-3xl shadow-2xl">
+                  <div 
+                    className="flex transition-transform duration-500 ease-out"
+                    style={{ transform: `translateX(-${carouselIndex * 100}%)` }}
+                  >
+                    {ANNOUNCEMENT_SLIDES.map((slide) => (
+                      <div key={slide.id} className="min-w-full relative">
+                        <div className="relative aspect-[16/9] w-full">
+                          {/* Image */}
+                          <img 
+                            src={slide.image} 
+                            alt={slide.title}
+                            className="w-full h-full object-contain bg-gray-100 dark:bg-gray-800"
+                            onError={(e) => {
+                              e.target.src = 'https://via.placeholder.com/2048x1152/10b981/ffffff?text=Announcement+Image';
+                            }}
+                          />
+                          
+                          {/* Gradient Overlay */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+                          
+                          {/* Content Overlay */}
+                          <div className="absolute bottom-0 left-0 right-0 p-6 lg:p-10 text-white">
+                            <div className="inline-block px-3 py-1 bg-green-500 rounded-full text-xs font-bold uppercase tracking-wide mb-3">
+                              {slide.tag}
+                            </div>
+                            <h3 className="text-xl lg:text-3xl font-bold mb-2">{slide.title}</h3>
+                            <p className="text-sm lg:text-lg text-gray-200">{slide.description}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Navigation Arrows */}
+                  <button
+                    onClick={prevSlide}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 w-11 h-11 bg-white/90 dark:bg-gray-800/90 rounded-full flex items-center justify-center hover:bg-white dark:hover:bg-gray-700 transition-all shadow-lg hover:scale-110"
+                  >
+                    <ChevronLeft className="w-5 h-5 text-gray-900 dark:text-white" />
+                  </button>
+                  <button
+                    onClick={nextSlide}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 w-11 h-11 bg-white/90 dark:bg-gray-800/90 rounded-full flex items-center justify-center hover:bg-white dark:hover:bg-gray-700 transition-all shadow-lg hover:scale-110"
+                  >
+                    <ChevronRight className="w-5 h-5 text-gray-900 dark:text-white" />
+                  </button>
+                </div>
+
+                {/* Dots Indicator */}
+                <div className="flex justify-center gap-2 mt-4">
+                  {ANNOUNCEMENT_SLIDES.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => goToSlide(index)}
+                      className={`transition-all duration-300 rounded-full ${
+                        index === carouselIndex
+                          ? 'w-7 h-2.5 bg-green-600 dark:bg-green-500'
+                          : 'w-2.5 h-2.5 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500'
+                      }`}
+                      aria-label={`Go to slide ${index + 1}`}
+                    />
+                  ))}
                 </div>
               </div>
             </div>
           </div>
+        </div>
+      </section>
 
+      {/* Stats Section */}
+      <section className="py-12 px-6 lg:px-8 bg-gradient-to-b from-white to-gray-50 dark:from-gray-950 dark:to-gray-900">
+        <div className="max-w-7xl mx-auto">
           {/* Stats Bar */}
-          <div className="mt-20 grid grid-cols-3 gap-8 max-w-3xl">
+          <div className="grid grid-cols-3 gap-8 max-w-3xl mx-auto">
             {[
               { value: '3', label: 'Check-in Methods', sublabel: 'Barcode, Face, Mobile' },
               { value: '100%', label: 'Digital Records', sublabel: 'Paperless System' },
