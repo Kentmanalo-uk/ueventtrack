@@ -5,3 +5,6 @@ build/
 .env.local
 env
 *.log
+
+# APK files
+frontend/public/downloads/*.apk

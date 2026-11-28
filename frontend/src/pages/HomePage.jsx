@@ -102,8 +102,9 @@ export default function HomePage() {
             </div>
             <div className="flex items-center gap-3">
               <a 
-                href="/downloads/UEventTrack.apk"
-                download
+                href="https://expo.dev/artifacts/eas/LiIoOl9NRUujMPUkGXfZDjH0059Hw-Otypgfr6gVwt0.apk"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="group px-5 py-2.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white text-sm font-bold rounded-full transition-all shadow-lg hover:shadow-xl hover:scale-105 flex items-center gap-2"
               >
                 <Smartphone className="w-4 h-4" />
@@ -144,12 +145,6 @@ export default function HomePage() {
 
               {/* Content Below Logo */}
               <div className="text-center lg:text-left space-y-4 w-full">
-                {/* Badge */}
-                <div className="inline-flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/50 dark:to-emerald-950/50 border border-green-200/60 dark:border-green-700/60 rounded-full">
-                  <Sparkles className="w-3 h-3 text-green-600 dark:text-green-400" />
-                  <span className="text-[10px] font-bold text-green-700 dark:text-green-300 tracking-wide uppercase">Smart Attendance System</span>
-                </div>
-
                 {/* Headline */}
                 <h1 className="font-display text-4xl lg:text-5xl font-semibold text-gray-900 dark:text-white leading-tight tracking-tight">
                   <span className="bg-gradient-to-r from-green-600 via-emerald-500 to-teal-600 dark:from-green-400 dark:via-emerald-400 dark:to-teal-400 bg-clip-text text-transparent">
